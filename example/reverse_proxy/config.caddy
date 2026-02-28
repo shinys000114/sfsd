@@ -1,0 +1,14 @@
+# sfsd Caddy Reverse Proxy Example
+#
+# Caddy automatically provisions Let's Encrypt certificates and configures HTTPS.
+
+files.example.com {
+    # Reverse proxy to the sfsd backend (must match host/port in config.yaml)
+    reverse_proxy 127.0.0.1:8080 {
+        # Caddy automatically forwards the necessary X-Forwarded-* headers by default.
+    }
+
+    # If you want sfsd to handle compression internally, omit Caddy's encode directive.
+    # If you disabled compression in sfsd, uncomment the line below to let Caddy handle it.
+    # encode zstd gzip
+}

@@ -1,0 +1,24 @@
+[Unit]
+Description=sfsd - Static File Serving Server
+After=network.target
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+Restart=on-failure
+RestartSec=5
+
+# Change these to match your standard setup
+User=root
+Group=root
+
+# Path to binary and configuration
+ExecStart=/usr/bin/sfsd launch /etc/sfsd/config.yaml
+
+# Security enhancements (optional but recommended)
+NoNewPrivileges=true
+ProtectSystem=full
+# ProtectHome=true
+
+[Install]
+WantedBy=multi-user.target
