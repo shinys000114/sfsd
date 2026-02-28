@@ -123,3 +123,8 @@ logging:
   - `server/`: Server initialization and lifecycle.
 - `example/`: Example configuration and error pages.
 
+## *
+While running multiple repositories, I was looking for a lightweight file server to replace nginx and caddy. So, I built my own.
+
+I am using this program here.
+ - [https://storage.sys114.com/](https://storage.sys114.com/): Monthly Odroid Image Build
