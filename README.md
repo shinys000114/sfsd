@@ -11,10 +11,10 @@
 - **TLS/SSL Support**: Easily enable HTTPS for secure connections.
 - **Middleware Support**:
   - **CORS**: Support for Cross-Origin Resource Sharing.
-  - **Compression**: Automatic compression using Gzip, Deflate, Brotli, and Zstd.
+  - **Compression**: Automatic compression using Gzip, Deflate, Brotli, and Zstd. Intelligently targets compressible content types (like `text/*`, `application/json`, `image/svg+xml`) to preserve `Content-Length` headers for optimal binary download tracking.
   - **Caching**: Flexible caching rules based on file patterns.
   - **Logging**: Access and error logging with configurable formats.
-  - **Request Counter**: Track file download statistics.
+  - **Request Counter**: Track file download statistics individually per file. Creates a detailed `stats.json` map of download counts.
 - **Security**:
   - **Basic Authentication**: Simple username/password protection.
   - **Hidden File Management**: Option to hide or show hidden files.
@@ -48,6 +48,16 @@ The `sfsd` binary provides several commands:
 
 ```bash
 ./sfsd version
+```
+
+### Clean Download Statistics
+
+If you delete files from your serving directory, you can remove those non-existent files from your tracking `stats.json` by running:
+
+```bash
+./sfsd clean-stats <serve-directory> <stats-file-path>
+# Example
+./sfsd clean-stats ./public data/stats.json
 ```
 
 ### Generate Default Configuration

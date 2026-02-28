@@ -1,11 +1,19 @@
 #!/bin/bash
 
-# Ensure git is initialized and tag exists
 if ! git rev-parse --is-inside-work-tree > /dev/null 2>&1; then
     echo "Warning: Not a git repository. Version will be 'dev'."
     VERSION="dev"
 else
-    VERSION=$(git describe --tags --always --dirty 2>/dev/null || echo "dev")
+    COMMIT_HASH=$(git rev-parse --short HEAD 2>/dev/null)
+    TAG=$(git describe --tags --abbrev=0 2>/dev/null)
+    
+    if [ -z "$COMMIT_HASH" ]; then
+        VERSION="dev"
+    elif [ -z "$TAG" ]; then
+        VERSION="dev-$COMMIT_HASH"
+    else
+        VERSION="$TAG-$COMMIT_HASH"
+    fi
 fi
 
 echo "Building version: $VERSION"

@@ -3,10 +3,27 @@ $ErrorActionPreference = "Stop"
 
 $version = "dev"
 try {
-    $version = git describe --tags --always --dirty 2>$null
-    if ($LASTEXITCODE -ne 0) { $version = "dev" }
+    $isGit = git rev-parse --is-inside-work-tree 2>$null
+    if ($isGit -eq "true") {
+        $commitHash = git rev-parse --short HEAD 2>$null
+        
+        $tag = ""
+        try {
+            $tag = git describe --tags --abbrev=0 2>$null
+        } catch { } # Ignore error if no tags found
+
+        if ([string]::IsNullOrWhiteSpace($commitHash)) {
+            $version = "dev"
+        } elseif ([string]::IsNullOrWhiteSpace($tag)) {
+            $version = "dev-$commitHash"
+        } else {
+            $version = "$tag-$commitHash"
+        }
+    } else {
+        Write-Host "Warning: Not a git repository. Version will be 'dev'."
+    }
 } catch {
-    Write-Host "Warning: git not found or not a git repository. Version will be 'dev'."
+    Write-Host "Warning: git not found or command failed. Version will be 'dev'."
 }
 
 Write-Host "Building version: $version"

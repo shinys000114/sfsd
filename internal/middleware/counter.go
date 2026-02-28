@@ -6,17 +6,17 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"sync/atomic"
+	"sync"
 	"time"
 )
 
 var (
-	totalDownloads uint64
-	statsFile      string
+	downloadStats sync.Map
+	statsFile     string
 )
 
 type Stats struct {
-	Downloads uint64 `json:"downloads"`
+	Downloads map[string]uint64 `json:"downloads"`
 }
 
 func InitCounter(path string) {
@@ -40,7 +40,12 @@ func LoadStats() {
 	if err == nil {
 		var s Stats
 		if err := json.Unmarshal(data, &s); err == nil {
-			atomic.StoreUint64(&totalDownloads, s.Downloads)
+			// Older format support: if s.Downloads is nil (was a uint64 before)
+			if s.Downloads != nil {
+				for path, count := range s.Downloads {
+					downloadStats.Store(path, count)
+				}
+			}
 		}
 	}
 }
@@ -49,7 +54,13 @@ func SaveStats() {
 	if statsFile == "" {
 		return
 	}
-	s := Stats{Downloads: atomic.LoadUint64(&totalDownloads)}
+
+	s := Stats{Downloads: make(map[string]uint64)}
+	downloadStats.Range(func(key, value interface{}) bool {
+		s.Downloads[key.(string)] = value.(uint64)
+		return true
+	})
+
 	data, err := json.MarshalIndent(s, "", "  ")
 	if err == nil {
 		// write to temp file then rename for atomic write
@@ -78,7 +89,8 @@ func DownloadCounter(next http.Handler) http.Handler {
 		next.ServeHTTP(observer, r)
 
 		if observer.status == http.StatusOK || observer.status == http.StatusPartialContent {
-			atomic.AddUint64(&totalDownloads, 1)
+			val, _ := downloadStats.LoadOrStore(r.URL.Path, uint64(0))
+			downloadStats.Store(r.URL.Path, val.(uint64)+1)
 		}
 	})
 }
@@ -106,5 +118,21 @@ func (w *statusObserver) Write(b []byte) (int, error) {
 }
 
 func GetTotalDownloads() uint64 {
-	return atomic.LoadUint64(&totalDownloads)
+	var total uint64
+	downloadStats.Range(func(key, value interface{}) bool {
+		total += value.(uint64)
+		return true
+	})
+	return total
+}
+
+func ExportDownloadStats(f func(key string, count uint64)) {
+	downloadStats.Range(func(key, value interface{}) bool {
+		f(key.(string), value.(uint64))
+		return true
+	})
+}
+
+func DeleteStat(key string) {
+	downloadStats.Delete(key)
 }
