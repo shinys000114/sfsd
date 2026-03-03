@@ -1,15 +1,40 @@
 package handler
 
 import (
+	"bytes"
 	"fmt"
 	"html/template"
 	"net/http"
 	"os"
-	"path"
+	"path/filepath"
 	"sort"
 	"strings"
 
 	"sfsd/internal/config"
+
+	"github.com/yuin/goldmark"
+	highlighting "github.com/yuin/goldmark-highlighting/v2"
+	"github.com/yuin/goldmark/extension"
+	"github.com/yuin/goldmark/parser"
+	"github.com/yuin/goldmark/renderer/html"
+)
+
+var mdParser = goldmark.New(
+	goldmark.WithExtensions(
+		extension.GFM,
+		highlighting.NewHighlighting(
+			highlighting.WithStyle("github"),
+		),
+		extension.Footnote,
+		extension.Typographer,
+		extension.DefinitionList,
+	),
+	goldmark.WithParserOptions(
+		parser.WithAutoHeadingID(),
+	),
+	goldmark.WithRendererOptions(
+		html.WithXHTML(),
+	),
 )
 
 type FileInfo struct {
@@ -21,8 +46,9 @@ type FileInfo struct {
 }
 
 type DirData struct {
-	Path  string
-	Files []FileInfo
+	Path   string
+	Files  []FileInfo
+	MdHtml template.HTML
 }
 
 func formatSize(bytes int64) string {
@@ -47,9 +73,12 @@ func serveDirectory(w http.ResponseWriter, r *http.Request, fullPath string, req
 	}
 
 	var files []FileInfo
+	var readmeContent []byte
+
 	for _, entry := range entries {
-		// Skip hidden files if configured
-		if cfg.Directory.HideHidden && isHidden(path.Join(fullPath, entry.Name())) {
+		name := entry.Name()
+		// Skip hidden files
+		if cfg.Directory.HideHidden && isHidden(filepath.Join(fullPath, name)) {
 			continue
 		}
 
@@ -58,19 +87,24 @@ func serveDirectory(w http.ResponseWriter, r *http.Request, fullPath string, req
 			continue
 		}
 
+		if cfg.Directory.RenderReadmeMd && !entry.IsDir() && readmeContent == nil {
+			if strings.EqualFold(name, "readme.md") {
+				readmeContent, _ = os.ReadFile(filepath.Join(fullPath, name))
+			}
+		}
+
 		sizeStr := "-"
 		if !entry.IsDir() {
 			sizeStr = formatSize(info.Size())
 		}
 
-		// URL needs to be properly path joined and escaped but simple path.Join works since it's standard HTTP
-		urlName := entry.Name()
+		urlName := name
 		if entry.IsDir() {
 			urlName += "/"
 		}
 
 		files = append(files, FileInfo{
-			Name:    entry.Name(),
+			Name:    name,
 			URL:     urlName,
 			IsDir:   entry.IsDir(),
 			Size:    sizeStr,
@@ -80,18 +114,24 @@ func serveDirectory(w http.ResponseWriter, r *http.Request, fullPath string, req
 
 	// Sort: Directories first, then alphabetically
 	sort.Slice(files, func(i, j int) bool {
-		if files[i].IsDir && !files[j].IsDir {
-			return true
-		}
-		if !files[i].IsDir && files[j].IsDir {
-			return false
+		if files[i].IsDir != files[j].IsDir {
+			return files[i].IsDir
 		}
 		return strings.ToLower(files[i].Name) < strings.ToLower(files[j].Name)
 	})
 
+	var mdHtml template.HTML
+	if len(readmeContent) > 0 {
+		var buf bytes.Buffer
+		if err := mdParser.Convert(readmeContent, &buf); err == nil {
+			mdHtml = template.HTML(buf.String())
+		}
+	}
+
 	data := DirData{
-		Path:  reqPath,
-		Files: files,
+		Path:   reqPath,
+		Files:  files,
+		MdHtml: mdHtml,
 	}
 
 	tmpl, err := template.New("dir").Parse(defaultDirTemplate)

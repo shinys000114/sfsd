@@ -32,6 +32,7 @@ type DirectoryConfig struct {
 	AllowSymlink         bool   `yaml:"allow_symlink"`
 	AllowExternalSymlink bool   `yaml:"allow_external_symlink"`
 	HideHidden           bool   `yaml:"hide_hidden"`
+	RenderReadmeMd       bool   `yaml:"rander_readme_md"`
 }
 
 type FeaturesConfig struct {
@@ -100,6 +101,7 @@ func CreateDefaultConfig() *Config {
 			AllowSymlink:         true,
 			AllowExternalSymlink: false,
 			HideHidden:           true,
+			RenderReadmeMd:       false,
 		},
 		Features: FeaturesConfig{
 			CORSEnabled: false,
