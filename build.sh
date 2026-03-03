@@ -28,6 +28,9 @@ echo "Building version: $VERSION"
 
 export CGO_ENABLED=0
 
+echo "Downloading dependencies..."
+go mod tidy
+
 WIN_OUT="sfsd_win_amd64_${TAG}_${COMMIT_HASH}.exe"
 LINUX_OUT="sfsd_linux_amd64_${TAG}_${COMMIT_HASH}"
 

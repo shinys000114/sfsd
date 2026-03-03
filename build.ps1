@@ -37,6 +37,9 @@ Write-Host "Building version: $version"
 
 $env:CGO_ENABLED = "0"
 
+Write-Host "Downloading dependencies..."
+go mod tidy
+
 $winOut = "sfsd_win_amd64_${tag}_${commitHash}.exe"
 $linuxOut = "sfsd_linux_amd64_${tag}_${commitHash}"
 
