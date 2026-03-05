@@ -7,9 +7,6 @@ Type=simple
 Restart=on-failure
 RestartSec=5
 
-# The directory where the server will run, %h resolves to the user's home directory
-WorkingDirectory=%h/sfsd
-
 # Path to binary and configuration in user's home
 ExecStart=%h/sfsd/sfsd launch %h/sfsd/config.yaml
 
