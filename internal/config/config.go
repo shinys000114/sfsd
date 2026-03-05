@@ -23,6 +23,7 @@ type ServerConfig struct {
 
 type TLSConfig struct {
 	Enabled  bool   `yaml:"enabled"`
+	HTTP3    bool   `yaml:"http3"`
 	CertFile string `yaml:"cert_file"`
 	KeyFile  string `yaml:"key_file"`
 }
@@ -92,6 +93,7 @@ func CreateDefaultConfig() *Config {
 			Port: 8080,
 			TLS: TLSConfig{
 				Enabled:  false,
+				HTTP3:    false,
 				CertFile: "/path/to/cert.pem",
 				KeyFile:  "/path/to/key.pem",
 			},

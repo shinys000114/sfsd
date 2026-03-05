@@ -8,6 +8,8 @@ import (
 	"sfsd/internal/config"
 	"sfsd/internal/handler"
 	"sfsd/internal/middleware"
+
+	"github.com/quic-go/quic-go/http3"
 )
 
 // Start initializes and starts the HTTP(S) server
@@ -39,6 +41,29 @@ func Start(cfg *config.Config) error {
 	if serveTLS {
 		log.Printf("Starting HTTPS server on %s", addr)
 		log.Printf("Serving directory: %s", cfg.Directory.Path)
+
+		// HTTP/3 (QUIC) support
+		if cfg.Server.TLS.HTTP3 {
+			originalHandler := handler
+			// Add Alt-Svc header to inform clients about HTTP/3 availability
+			handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Alt-Svc", fmt.Sprintf(`h3=":%d"; ma=86400`, cfg.Server.Port))
+				originalHandler.ServeHTTP(w, r)
+			})
+
+			h3Server := &http3.Server{
+				Addr:    addr,
+				Handler: handler,
+			}
+
+			go func() {
+				log.Printf("Starting HTTP/3 (QUIC) server on %s", addr)
+				if err := h3Server.ListenAndServeTLS(cfg.Server.TLS.CertFile, cfg.Server.TLS.KeyFile); err != nil {
+					log.Printf("HTTP/3 server error: %v", err)
+				}
+			}()
+		}
+
 		return http.ListenAndServeTLS(addr, cfg.Server.TLS.CertFile, cfg.Server.TLS.KeyFile, handler)
 	}
 
