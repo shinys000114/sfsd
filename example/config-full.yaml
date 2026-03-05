@@ -4,7 +4,6 @@ default:
   server:
     host: localhost
     port: 8080
-    domains: []
     tls:
       enabled: false
       http3: false
@@ -28,15 +27,6 @@ default:
       enabled: false
       username: admin
       password: password123
-    pages:
-      404: ./public/404.html
-    cache_rules:
-      - pattern: '*.html'
-        max_age: 0
-      - pattern: '*.png'
-        max_age: 86400
-      - pattern: '*'
-        max_age: 3600
   logging:
     format: plain
     access_log: access.log

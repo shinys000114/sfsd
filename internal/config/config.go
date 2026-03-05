@@ -23,7 +23,7 @@ type Config struct {
 type ServerConfig struct {
 	Host    string    `yaml:"host"`
 	Port    int       `yaml:"port"`
-	Domains []string  `yaml:"domains"`
+	Domains []string  `yaml:"domains,omitempty"`
 	TLS     TLSConfig `yaml:"tls"`
 }
 
@@ -47,8 +47,8 @@ type FeaturesConfig struct {
 	Compression []string       `yaml:"compression"`
 	StatsFile   string         `yaml:"stats_file"`
 	Auth        AuthConfig     `yaml:"auth"`
-	Pages       map[int]string `yaml:"pages"`
-	CacheRules  []CacheRule    `yaml:"cache_rules"`
+	Pages       map[int]string `yaml:"pages,omitempty"`
+	CacheRules  []CacheRule    `yaml:"cache_rules,omitempty"`
 }
 
 type AuthConfig struct {
@@ -119,14 +119,6 @@ func CreateDefaultConfig() *Config {
 				Enabled:  false,
 				Username: "admin",
 				Password: "password123",
-			},
-			Pages: map[int]string{
-				404: "./public/404.html",
-			},
-			CacheRules: []CacheRule{
-				{Pattern: "*.html", MaxAge: 0},
-				{Pattern: "*.png", MaxAge: 86400},
-				{Pattern: "*", MaxAge: 3600},
 			},
 		},
 		Logging: LoggingConfig{
