@@ -1,0 +1,26 @@
+# Virtual Hosting on the same port (80)
+# Requests will be routed based on the 'Host' header.
+
+site_a:
+  server:
+    host: "0.0.0.0"
+    port: 80
+    domains: ["a.example.com"]
+  directory:
+    path: "./data/site_a"
+  features:
+    stats_file: "data/stats-a.json"
+
+site_b:
+  server:
+    host: "0.0.0.0"
+    port: 80
+    domains: ["b.example.com"]
+  directory:
+    path: "./data/site_b"
+  features:
+    stats_file: "data/stats-b.json"
+    auth:
+      enabled: true
+      username: "admin"
+      password: "password123"

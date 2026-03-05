@@ -1,0 +1,6 @@
+# Scenario: Virtual Hosting Integration
+# Multiple domains pointing to the same sfsd backend port.
+# sfsd distinguishes domains using the 'Host' header provided by Caddy.
+site-a.com, site-b.com {
+    reverse_proxy 127.0.0.1:8080
+}

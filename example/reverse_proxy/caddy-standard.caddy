@@ -1,0 +1,6 @@
+# Scenario: Standard SSL Termination
+# External (HTTPS/HTTP3) -> Caddy -> sfsd (HTTP 127.0.0.1:8080)
+# Caddy handles certificates and forwards requests to sfsd's plain HTTP port.
+example.com {
+    reverse_proxy 127.0.0.1:8080
+}

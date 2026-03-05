@@ -1,0 +1,67 @@
+# Multiple instances on different ports with various features
+# This example shows how to run distinct services in one process.
+
+public_web:
+  server:
+    host: "0.0.0.0"
+    port: 8080
+  directory:
+    path: "./public"
+  features:
+    compression: ["gzip", "brotli"]
+    stats_file: "data/stats-public.json"
+
+private_api:
+  server:
+    host: "127.0.0.1"
+    port: 9090
+  directory:
+    path: "./internal_docs"
+  features:
+    auth:
+      enabled: true
+      username: "admin"
+      password: "secret_password"
+    stats_file: "data/stats-private.json"
+    compression: ["zstd"]
+default:
+  server:
+    host: localhost
+    port: 8080
+    domains: []
+    tls:
+      enabled: false
+      http3: false
+      cert_file: /path/to/cert.pem
+      key_file: /path/to/key.pem
+  directory:
+    path: ./public
+    allow_symlink: true
+    allow_external_symlink: false
+    hide_hidden: true
+    rander_readme_md: false
+  features:
+    cors_enabled: false
+    compression:
+      - gzip
+      - deflate
+      - brotli
+      - zstd
+    stats_file: data/stats.json
+    auth:
+      enabled: false
+      username: admin
+      password: password123
+    pages:
+      404: ./public/404.html
+    cache_rules:
+      - pattern: '*.html'
+        max_age: 0
+      - pattern: '*.png'
+        max_age: 86400
+      - pattern: '*'
+        max_age: 3600
+  logging:
+    format: plain
+    access_log: access.log
+    error_log: error.log

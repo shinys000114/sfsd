@@ -1,14 +1,38 @@
-# sfsd Caddy Reverse Proxy Example
-#
-# Caddy automatically provisions Let's Encrypt certificates and configures HTTPS.
+# sfsd Caddy Reverse Proxy Examples
+# Caddy automatically provisions Let's Encrypt certificates and handles HTTPS/HTTP3.
 
-files.example.com {
-    # Reverse proxy to the sfsd backend (must match host/port in config.yaml)
-    reverse_proxy 127.0.0.1:8080 {
-        # Caddy automatically forwards the necessary X-Forwarded-* headers by default.
+# Scenario 1: Standard SSL Termination
+# External (HTTPS/HTTP3) -> Caddy -> Internal (HTTP 127.0.0.1:8080)
+# sfsd doesn't need TLS configuration; Caddy handles it.
+example.com {
+    reverse_proxy 127.0.0.1:8080
+}
+
+# Scenario 2: vHost Integration
+# Multiple domains pointing to the same sfsd backend port.
+# sfsd uses the 'Host' header provided by Caddy to route to the correct directory.
+site-a.com, site-b.com {
+    reverse_proxy 127.0.0.1:8080
+}
+
+# Scenario 3: Multi-Instance/Port Routing
+# Different domains routed to different sfsd instances/ports.
+app1.example.com {
+    reverse_proxy 127.0.0.1:8081
+}
+
+app2.example.com {
+    reverse_proxy 127.0.0.1:8082
+}
+
+# Scenario 4: End-to-End TLS (Re-encryption)
+# Used when you want encryption between Caddy and sfsd.
+# Useful if sfsd is on a different physical machine in an untrusted network.
+secure.example.com {
+    reverse_proxy https://127.0.0.1:8443 {
+        transport http {
+            tls
+            # tls_insecure_skip_verify # Uncomment if sfsd uses self-signed certs
+        }
     }
-
-    # If you want sfsd to handle compression internally, omit Caddy's encode directive.
-    # If you disabled compression in sfsd, uncomment the line below to let Caddy handle it.
-    # encode zstd gzip
 }

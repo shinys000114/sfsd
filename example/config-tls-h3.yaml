@@ -1,0 +1,22 @@
+# HTTPS + HTTP/3 (QUIC) configuration
+# To use this, you need valid certificate and key files.
+secure_server:
+  server:
+    host: "0.0.0.0"
+    port: 8443
+    tls:
+      enabled: true
+      http3: true
+      cert_file: "./certs/fullchain.pem"
+      key_file: "./certs/privkey.pem"
+  directory:
+    path: "./public"
+    hide_hidden: true
+  features:
+    cors_enabled: true
+    compression: ["gzip", "brotli", "zstd"]
+    stats_file: "data/stats-secure.json"
+    pages:
+      403: "./example/pages/403.html"
+      404: "./example/pages/404.html"
+      500: "./example/pages/500.html"
