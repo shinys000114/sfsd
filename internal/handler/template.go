@@ -14,7 +14,7 @@ const defaultDirTemplate = `<!DOCTYPE html>
 			margin: 10px;
             margin-bottom: 40px;
             padding: 20px;
-            border: 1px solid #e1e4e8;
+            border: 1px solid #ccc;
             border-radius: 6px;
         }
 
