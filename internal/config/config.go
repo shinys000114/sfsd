@@ -30,8 +30,8 @@ type ServerConfig struct {
 type TLSConfig struct {
 	Enabled  bool   `yaml:"enabled"`
 	HTTP3    bool   `yaml:"http3"`
-	CertFile string `yaml:"cert_file"`
-	KeyFile  string `yaml:"key_file"`
+	CertFile string `yaml:"cert_file,omitempty"`
+	KeyFile  string `yaml:"key_file,omitempty"`
 }
 
 type DirectoryConfig struct {
@@ -45,7 +45,7 @@ type DirectoryConfig struct {
 type FeaturesConfig struct {
 	CORSEnabled bool           `yaml:"cors_enabled"`
 	Compression []string       `yaml:"compression"`
-	StatsFile   string         `yaml:"stats_file"`
+	StatsFile   string         `yaml:"stats_file,omitempty"`
 	Auth        AuthConfig     `yaml:"auth"`
 	Pages       map[int]string `yaml:"pages,omitempty"`
 	CacheRules  []CacheRule    `yaml:"cache_rules,omitempty"`
@@ -64,8 +64,8 @@ type CacheRule struct {
 
 type LoggingConfig struct {
 	Format    string `yaml:"format"`
-	AccessLog string `yaml:"access_log"`
-	ErrorLog  string `yaml:"error_log"`
+	AccessLog string `yaml:"access_log,omitempty"`
+	ErrorLog  string `yaml:"error_log,omitempty"`
 }
 
 func Load(path string) (*Config, error) {
@@ -98,10 +98,8 @@ func CreateDefaultConfig() *Config {
 			Host: "localhost",
 			Port: 8080,
 			TLS: TLSConfig{
-				Enabled:  false,
-				HTTP3:    false,
-				CertFile: "/path/to/cert.pem",
-				KeyFile:  "/path/to/key.pem",
+				Enabled: false,
+				HTTP3:   false,
 			},
 		},
 		Directory: DirectoryConfig{
@@ -114,7 +112,6 @@ func CreateDefaultConfig() *Config {
 		Features: FeaturesConfig{
 			CORSEnabled: false,
 			Compression: []string{"gzip", "deflate", "brotli", "zstd"},
-			StatsFile:   "data/stats.json",
 			Auth: AuthConfig{
 				Enabled:  false,
 				Username: "admin",
@@ -122,9 +119,7 @@ func CreateDefaultConfig() *Config {
 			},
 		},
 		Logging: LoggingConfig{
-			Format:    "plain",
-			AccessLog: "access.log",
-			ErrorLog:  "error.log",
+			Format: "plain",
 		},
 	}
 
