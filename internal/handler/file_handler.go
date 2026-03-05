@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -163,6 +164,13 @@ func (h *FileHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Serve the file (Range requests are handled automatically by ServeFile)
+	// Set ETag based on file size and modification time for efficient caching
+	// Weak ETag is sufficient for file serving and prevents issues with compression
+	modTime := fileInfo.ModTime().UnixNano()
+	size := fileInfo.Size()
+	etag := fmt.Sprintf(`W/"%x-%x"`, size, modTime)
+	w.Header().Set("ETag", etag)
+
+	// Serve the file (Range requests and 304 Not Modified are handled automatically by ServeFile)
 	http.ServeFile(w, r, resolvedPath)
 }
