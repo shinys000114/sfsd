@@ -65,7 +65,7 @@ func formatSize(bytes int64) string {
 }
 
 // serveDirectory reads custom directory listing and writes HTML
-func serveDirectory(w http.ResponseWriter, r *http.Request, fullPath string, reqPath string, cfg *config.Config) {
+func serveDirectory(w http.ResponseWriter, r *http.Request, fullPath string, reqPath string, cfg *config.ServerInstance) {
 	entries, err := os.ReadDir(fullPath)
 	if err != nil {
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)

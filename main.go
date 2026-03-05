@@ -103,23 +103,29 @@ func printUsage() {
 }
 
 func startServer(cfg *config.Config) {
-	fmt.Printf("Starting file server on %s:%d (TLS: %v)\n", cfg.Server.Host, cfg.Server.Port, cfg.Server.TLS.Enabled)
-	fmt.Printf("Serving directory: %s\n", cfg.Directory.Path)
+	fmt.Printf("Launching %d server instances...\n", len(cfg.Servers))
 
-	middleware.InitCounter(cfg.Features.StatsFile)
+	for name, instance := range cfg.Servers {
+		name := name
+		instance := instance
 
-	go func() {
-		if err := server.Start(cfg); err != nil {
-			log.Fatalf("Server exited with error: %v", err)
+		if instance.Features.StatsFile != "" {
+			middleware.InitCounter(instance.Features.StatsFile)
 		}
-	}()
+
+		go func() {
+			if err := server.Start(name, &instance); err != nil {
+				log.Printf("[%s] Server exited with error: %v", name, err)
+			}
+		}()
+	}
 
 	// Wait for interrupt signal to gracefully shutdown
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, os.Interrupt)
 	<-quit
 
-	fmt.Println("\nShutting down server...")
+	fmt.Println("\nShutting down all servers...")
 	middleware.SaveStats()
 	os.Exit(0)
 }

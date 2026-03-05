@@ -5,15 +5,14 @@ import (
 	"log"
 	"net/http"
 
+	"github.com/quic-go/quic-go/http3"
 	"sfsd/internal/config"
 	"sfsd/internal/handler"
 	"sfsd/internal/middleware"
-
-	"github.com/quic-go/quic-go/http3"
 )
 
-// Start initializes and starts the HTTP(S) server
-func Start(cfg *config.Config) error {
+// Start initializes and starts a single server instance
+func Start(name string, cfg *config.ServerInstance) error {
 	fileHandler := handler.NewFileHandler(cfg)
 
 	mux := http.NewServeMux()
@@ -21,53 +20,50 @@ func Start(cfg *config.Config) error {
 	mux.Handle("/", fileHandler)
 
 	// Build middleware chain (from inside out)
-	var handler http.Handler = mux
+	var h http.Handler = mux
 
 	// 1. Core security & features
-	handler = middleware.DownloadCounter(handler)
-	handler = middleware.Cache(cfg.Features.CacheRules, handler)
-	handler = middleware.Compress(cfg.Features.Compression, handler)
-	handler = middleware.CORS(cfg.Features.CORSEnabled, handler)
+	h = middleware.DownloadCounter(h)
+	h = middleware.Cache(cfg.Features.CacheRules, h)
+	h = middleware.Compress(cfg.Features.Compression, h)
+	h = middleware.CORS(cfg.Features.CORSEnabled, h)
 
 	// 2. Auth (if enabled, protects everything)
-	handler = middleware.BasicAuth(cfg.Features.Auth, handler)
+	h = middleware.BasicAuth(cfg.Features.Auth, h)
 
 	// 3. Outermost Logging
-	handler = middleware.Logger(cfg, handler)
+	h = middleware.Logger(cfg, h)
 
 	addr := fmt.Sprintf("%s:%d", cfg.Server.Host, cfg.Server.Port)
 	serveTLS := cfg.Server.TLS.Enabled
 
 	if serveTLS {
-		log.Printf("Starting HTTPS server on %s", addr)
-		log.Printf("Serving directory: %s", cfg.Directory.Path)
-
 		// HTTP/3 (QUIC) support
 		if cfg.Server.TLS.HTTP3 {
-			originalHandler := handler
+			originalHandler := h
 			// Add Alt-Svc header to inform clients about HTTP/3 availability
-			handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			h = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				w.Header().Set("Alt-Svc", fmt.Sprintf(`h3=":%d"; ma=86400`, cfg.Server.Port))
 				originalHandler.ServeHTTP(w, r)
 			})
 
 			h3Server := &http3.Server{
 				Addr:    addr,
-				Handler: handler,
+				Handler: h,
 			}
 
 			go func() {
-				log.Printf("Starting HTTP/3 (QUIC) server on %s", addr)
+				log.Printf("[%s] Starting HTTP/3 (QUIC) server on %s", name, addr)
 				if err := h3Server.ListenAndServeTLS(cfg.Server.TLS.CertFile, cfg.Server.TLS.KeyFile); err != nil {
-					log.Printf("HTTP/3 server error: %v", err)
+					log.Printf("[%s] HTTP/3 server error: %v", name, err)
 				}
 			}()
 		}
 
-		return http.ListenAndServeTLS(addr, cfg.Server.TLS.CertFile, cfg.Server.TLS.KeyFile, handler)
+		log.Printf("[%s] Starting HTTPS server on %s", name, addr)
+		return http.ListenAndServeTLS(addr, cfg.Server.TLS.CertFile, cfg.Server.TLS.KeyFile, h)
 	}
 
-	log.Printf("Starting HTTP server on %s", addr)
-	log.Printf("Serving directory: %s", cfg.Directory.Path)
-	return http.ListenAndServe(addr, handler)
+	log.Printf("[%s] Starting HTTP server on %s", name, addr)
+	return http.ListenAndServe(addr, h)
 }

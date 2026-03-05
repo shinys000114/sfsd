@@ -34,7 +34,7 @@ func (w *responseWriterObserver) Write(b []byte) (int, error) {
 	return n, err
 }
 
-func Logger(cfg *config.Config, next http.Handler) http.Handler {
+func Logger(cfg *config.ServerInstance, next http.Handler) http.Handler {
 	var accessLogger *log.Logger
 	var errorLogger *log.Logger
 

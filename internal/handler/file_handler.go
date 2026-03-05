@@ -12,18 +12,18 @@ import (
 
 type FileHandler struct {
 	baseDir string
-	cfg     *config.Config
+	cfg     *config.ServerInstance
 }
 
-func NewFileHandler(cfg *config.Config) *FileHandler {
-	absDataDir, err := filepath.Abs(cfg.Directory.Path)
+func NewFileHandler(instanceCfg *config.ServerInstance) *FileHandler {
+	absDataDir, err := filepath.Abs(instanceCfg.Directory.Path)
 	if err != nil {
 		log.Fatalf("Failed to resolve absolute path for serving directory: %v", err)
 	}
 
 	return &FileHandler{
 		baseDir: absDataDir,
-		cfg:     cfg,
+		cfg:     instanceCfg,
 	}
 }
 

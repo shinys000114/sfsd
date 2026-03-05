@@ -7,12 +7,17 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// Config represents the root configuration structure
-type Config struct {
+// ServerInstance represents a single server configuration
+type ServerInstance struct {
 	Server    ServerConfig    `yaml:"server"`
 	Directory DirectoryConfig `yaml:"directory"`
 	Features  FeaturesConfig  `yaml:"features"`
 	Logging   LoggingConfig   `yaml:"logging"`
+}
+
+// Config represents the root configuration containing multiple servers
+type Config struct {
+	Servers map[string]ServerInstance `yaml:",inline"`
 }
 
 type ServerConfig struct {
@@ -79,7 +84,7 @@ func Load(path string) (*Config, error) {
 	}
 
 	var conf Config
-	if err := yaml.Unmarshal(data, &conf); err != nil {
+	if err := yaml.Unmarshal(data, &conf.Servers); err != nil {
 		return nil, fmt.Errorf("failed to parse yaml: %w", err)
 	}
 
@@ -87,7 +92,7 @@ func Load(path string) (*Config, error) {
 }
 
 func CreateDefaultConfig() *Config {
-	return &Config{
+	instance := ServerInstance{
 		Server: ServerConfig{
 			Host: "localhost",
 			Port: 8080,
@@ -127,6 +132,12 @@ func CreateDefaultConfig() *Config {
 			Format:    "plain",
 			AccessLog: "access.log",
 			ErrorLog:  "error.log",
+		},
+	}
+
+	return &Config{
+		Servers: map[string]ServerInstance{
+			"default": instance,
 		},
 	}
 }
