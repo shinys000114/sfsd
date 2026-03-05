@@ -21,9 +21,10 @@ type Config struct {
 }
 
 type ServerConfig struct {
-	Host string    `yaml:"host"`
-	Port int       `yaml:"port"`
-	TLS  TLSConfig `yaml:"tls"`
+	Host    string    `yaml:"host"`
+	Port    int       `yaml:"port"`
+	Domains []string  `yaml:"domains"`
+	TLS     TLSConfig `yaml:"tls"`
 }
 
 type TLSConfig struct {

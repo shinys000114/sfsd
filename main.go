@@ -103,19 +103,28 @@ func printUsage() {
 }
 
 func startServer(cfg *config.Config) {
-	fmt.Printf("Launching %d server instances...\n", len(cfg.Servers))
-
+	// Group instances by address
+	groups := make(map[string]map[string]*config.ServerInstance)
 	for name, instance := range cfg.Servers {
-		name := name
-		instance := instance
+		addr := fmt.Sprintf("%s:%d", instance.Server.Host, instance.Server.Port)
+		if groups[addr] == nil {
+			groups[addr] = make(map[string]*config.ServerInstance)
+		}
+		groups[addr][name] = &instance
 
 		if instance.Features.StatsFile != "" {
 			middleware.InitCounter(instance.Features.StatsFile)
 		}
+	}
 
+	fmt.Printf("Launching servers across %d unique addresses...\n", len(groups))
+
+	for addr, instances := range groups {
+		addr := addr
+		instances := instances
 		go func() {
-			if err := server.Start(name, &instance); err != nil {
-				log.Printf("[%s] Server exited with error: %v", name, err)
+			if err := server.StartGroup(addr, instances); err != nil {
+				log.Fatalf("Server at %s failed: %v", addr, err)
 			}
 		}()
 	}
