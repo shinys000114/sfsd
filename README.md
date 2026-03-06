@@ -48,6 +48,20 @@ go build -o sfsd main.go
 ./sfsd launch config.yaml
 ```
 
+### Generate Self-Signed Certificate
+
+Generates a self-signed TLS certificate and private key for testing.
+**Warning: These certificates are for development/testing purposes only.**
+
+```bash
+# Default (RSA 2048)
+./sfsd gen-cert ./certs
+
+# Specific Algorithm (rsa4096, ecdsa, ed25519)
+./sfsd gen-cert ./certs rsa4096
+./sfsd gen-cert ./certs ed25519
+```
+
 ### Print Version
 
 ```bash

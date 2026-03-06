@@ -48,6 +48,20 @@ func main() {
 		}
 		startServer(cfg)
 
+	case "gen-cert":
+		outputDir := "./certs"
+		algo := "rsa"
+		if len(os.Args) >= 3 {
+			outputDir = os.Args[2]
+		}
+		if len(os.Args) >= 4 {
+			algo = os.Args[3]
+		}
+		if err := server.GenerateSelfSignedCert(outputDir, algo); err != nil {
+			log.Fatalf("Failed to generate certificate: %v\n", err)
+		}
+		os.Exit(0)
+
 	case "clean-stats":
 		if len(os.Args) < 4 {
 			fmt.Println("Error: 'clean-stats' requires <directory> and <stats.json> paths.")
@@ -97,6 +111,7 @@ func printUsage() {
 	fmt.Fprintf(os.Stderr, "Usage: %s [command] [arguments]\n\n", os.Args[0])
 	fmt.Fprintf(os.Stderr, "Commands:\n")
 	fmt.Fprintf(os.Stderr, "  launch <config.yaml>   Start the server with the specified config file\n")
+	fmt.Fprintf(os.Stderr, "  gen-cert [path] [algo] Generate self-signed TLS cert (rsa|rsa2048|rsa4096|ecdsa|ed25519)\n")
 	fmt.Fprintf(os.Stderr, "  version                Print the version and exit\n")
 	fmt.Fprintf(os.Stderr, "  config                 Print the default config (example) and exit\n")
 	fmt.Fprintf(os.Stderr, "  clean-stats <dir> <st> Remove non-existent files from stats.json\n")
