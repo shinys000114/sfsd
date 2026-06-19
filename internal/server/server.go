@@ -61,11 +61,21 @@ func StartGroup(addr string, instances map[string]*config.ServerInstance) error 
 		// Register all domains for this instance
 		if len(cfg.Server.Domains) > 0 {
 			for _, domain := range cfg.Server.Domains {
-				vhost.hosts[normalizeHost(domain)] = h
+				host := normalizeHost(domain)
+				if host == "" {
+					return fmt.Errorf("[%s] empty vhost domain", name)
+				}
+				if _, exists := vhost.hosts[host]; exists {
+					return fmt.Errorf("[%s] duplicate vhost domain: %s", name, host)
+				}
+				vhost.hosts[host] = h
 			}
 		} else {
 			// If no domains, we can't reliably route multiple instances on same port
 			// but we'll use it as a "default" for this address if it's the only one.
+			if _, exists := vhost.hosts["_default_"]; exists {
+				return fmt.Errorf("[%s] multiple default instances configured for %s", name, addr)
+			}
 			vhost.hosts["_default_"] = h
 		}
 
