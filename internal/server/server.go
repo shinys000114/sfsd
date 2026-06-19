@@ -6,6 +6,7 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"github.com/quic-go/quic-go/http3"
@@ -140,6 +141,11 @@ func StartGroup(addr string, instances map[string]*config.ServerInstance) error 
 		}
 
 		if http3Enabled {
+			altSvcPort, err := portFromAddr(addr)
+			if err != nil {
+				return err
+			}
+
 			h3Server := &http3.Server{
 				Addr:    addr,
 				Handler: finalHandler,
@@ -148,7 +154,7 @@ func StartGroup(addr string, instances map[string]*config.ServerInstance) error 
 			// Add Alt-Svc header
 			h := finalHandler
 			finalHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				w.Header().Set("Alt-Svc", fmt.Sprintf(`h3=":%s"; ma=86400`, strings.Split(addr, ":")[1]))
+				w.Header().Set("Alt-Svc", fmt.Sprintf(`h3=":%d"; ma=86400`, altSvcPort))
 				h.ServeHTTP(w, r)
 			})
 			h3Server.Handler = finalHandler
@@ -191,4 +197,21 @@ func normalizeHost(host string) string {
 
 	host = strings.TrimSuffix(host, ".")
 	return strings.ToLower(host)
+}
+
+func portFromAddr(addr string) (int, error) {
+	_, port, err := net.SplitHostPort(addr)
+	if err != nil {
+		return 0, fmt.Errorf("invalid listen address %q: %w", addr, err)
+	}
+
+	portNumber, err := strconv.Atoi(port)
+	if err != nil {
+		return 0, fmt.Errorf("invalid listen port %q: %w", port, err)
+	}
+	if portNumber <= 0 || portNumber > 65535 {
+		return 0, fmt.Errorf("listen port out of range: %d", portNumber)
+	}
+
+	return portNumber, nil
 }
