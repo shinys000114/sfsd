@@ -95,6 +95,10 @@ web-server:
     path: ./public
     allow_symlink: true
     hide_hidden: true
+    exclude:
+      - .git/
+      - '*.tmp'
+      - private/
   features:
     compression: ["gzip", "brotli"]
     stats_file: data/stats-web.json
@@ -120,6 +124,8 @@ secure-storage:
       username: admin
       password: password123
 ```
+
+`directory.exclude` uses gitignore-like patterns. Blank lines and `#` comments are ignored, `!` negates a previous match, `/` anchors a pattern to the serve root, and a trailing `/` matches a directory and its contents.
 
 For more detailed scenarios (Reverse Proxy, vHost, etc.), check the [**Example Directory**](./example/README.md).
 

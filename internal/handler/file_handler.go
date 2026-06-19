@@ -12,8 +12,9 @@ import (
 )
 
 type FileHandler struct {
-	baseDir string
-	cfg     *config.ServerInstance
+	baseDir      string
+	cfg          *config.ServerInstance
+	excludeRules []excludeRule
 }
 
 func NewFileHandler(instanceCfg *config.ServerInstance) *FileHandler {
@@ -23,8 +24,9 @@ func NewFileHandler(instanceCfg *config.ServerInstance) *FileHandler {
 	}
 
 	return &FileHandler{
-		baseDir: absDataDir,
-		cfg:     instanceCfg,
+		baseDir:      absDataDir,
+		cfg:          instanceCfg,
+		excludeRules: compileExcludeRules(instanceCfg.Directory.Exclude),
 	}
 }
 
@@ -96,7 +98,7 @@ func (h *FileHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Security: Verify that the resulting absolute path is strictly under the base directory
-	if !strings.HasPrefix(absFullPath, h.baseDir) {
+	if !isPathWithin(h.baseDir, absFullPath) {
 		h.serveCustomError(w, r, http.StatusForbidden)
 		return
 	}
@@ -131,7 +133,7 @@ func (h *FileHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		if !h.cfg.Directory.AllowExternalSymlink && !strings.HasPrefix(absEvalPath, h.baseDir) {
+		if !h.cfg.Directory.AllowExternalSymlink && !isPathWithin(h.baseDir, absEvalPath) {
 			h.serveCustomError(w, r, http.StatusForbidden)
 			return
 		}
@@ -145,9 +147,15 @@ func (h *FileHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	if isExcludedByRules(h.baseDir, absFullPath, fileInfo.IsDir(), h.excludeRules) ||
+		(resolvedPath != absFullPath && isExcludedByRules(h.baseDir, resolvedPath, fileInfo.IsDir(), h.excludeRules)) {
+		h.serveCustomError(w, r, http.StatusNotFound)
+		return
+	}
+
 	// Check if hidden files are allowed
 	if h.cfg.Directory.HideHidden {
-		if isHidden(resolvedPath) {
+		if isHidden(absFullPath) || (resolvedPath != absFullPath && isHidden(resolvedPath)) {
 			// Pretend it doesn't exist
 			h.serveCustomError(w, r, http.StatusNotFound)
 			return
@@ -160,7 +168,7 @@ func (h *FileHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			http.Redirect(w, r, r.URL.Path+"/", http.StatusMovedPermanently)
 			return
 		}
-		serveDirectory(w, r, resolvedPath, r.URL.Path, h.cfg)
+		serveDirectory(w, r, resolvedPath, r.URL.Path, h.cfg, h.baseDir, h.excludeRules)
 		return
 	}
 
@@ -173,4 +181,12 @@ func (h *FileHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	// Serve the file (Range requests and 304 Not Modified are handled automatically by ServeFile)
 	http.ServeFile(w, r, resolvedPath)
+}
+
+func isPathWithin(baseDir string, targetPath string) bool {
+	rel, err := filepath.Rel(baseDir, targetPath)
+	if err != nil {
+		return false
+	}
+	return rel == "." || (rel != ".." && !strings.HasPrefix(rel, ".."+string(os.PathSeparator)) && !filepath.IsAbs(rel))
 }

@@ -12,6 +12,9 @@ secure_server:
   directory:
     path: "./public"
     hide_hidden: true
+    exclude:
+      - .git/
+      - '*.tmp'
   features:
     cors_enabled: true
     compression: ["gzip", "brotli", "zstd"]

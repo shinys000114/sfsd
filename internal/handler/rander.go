@@ -65,7 +65,7 @@ func formatSize(bytes int64) string {
 }
 
 // serveDirectory reads custom directory listing and writes HTML
-func serveDirectory(w http.ResponseWriter, r *http.Request, fullPath string, reqPath string, cfg *config.ServerInstance) {
+func serveDirectory(w http.ResponseWriter, r *http.Request, fullPath string, reqPath string, cfg *config.ServerInstance, baseDir string, excludeRules []excludeRule) {
 	entries, err := os.ReadDir(fullPath)
 	if err != nil {
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
@@ -77,19 +77,38 @@ func serveDirectory(w http.ResponseWriter, r *http.Request, fullPath string, req
 
 	for _, entry := range entries {
 		name := entry.Name()
-		// Skip hidden files
-		if cfg.Directory.HideHidden && isHidden(filepath.Join(fullPath, name)) {
-			continue
-		}
-
+		entryPath := filepath.Join(fullPath, name)
 		info, err := entry.Info()
 		if err != nil {
 			continue
 		}
 
+		// Skip hidden files
+		if cfg.Directory.HideHidden && isHidden(entryPath) {
+			continue
+		}
+
+		if isExcludedByRules(baseDir, entryPath, info.IsDir(), excludeRules) {
+			continue
+		}
+		if info.Mode()&os.ModeSymlink != 0 {
+			resolvedPath, err := filepath.EvalSymlinks(entryPath)
+			if err == nil {
+				resolvedInfo, err := os.Stat(resolvedPath)
+				if err == nil {
+					if cfg.Directory.HideHidden && isHidden(resolvedPath) {
+						continue
+					}
+					if isExcludedByRules(baseDir, resolvedPath, resolvedInfo.IsDir(), excludeRules) {
+						continue
+					}
+				}
+			}
+		}
+
 		if cfg.Directory.RenderReadmeMd && !entry.IsDir() && readmeContent == nil {
 			if strings.EqualFold(name, "readme.md") {
-				readmeContent, _ = os.ReadFile(filepath.Join(fullPath, name))
+				readmeContent, _ = os.ReadFile(entryPath)
 			}
 		}
 

@@ -35,11 +35,12 @@ type TLSConfig struct {
 }
 
 type DirectoryConfig struct {
-	Path                 string `yaml:"path"`
-	AllowSymlink         bool   `yaml:"allow_symlink"`
-	AllowExternalSymlink bool   `yaml:"allow_external_symlink"`
-	HideHidden           bool   `yaml:"hide_hidden"`
-	RenderReadmeMd       bool   `yaml:"rander_readme_md"`
+	Path                 string   `yaml:"path"`
+	AllowSymlink         bool     `yaml:"allow_symlink"`
+	AllowExternalSymlink bool     `yaml:"allow_external_symlink"`
+	HideHidden           bool     `yaml:"hide_hidden"`
+	RenderReadmeMd       bool     `yaml:"rander_readme_md"`
+	Exclude              []string `yaml:"exclude,omitempty"`
 }
 
 type FeaturesConfig struct {
@@ -108,6 +109,7 @@ func CreateDefaultConfig() *Config {
 			AllowExternalSymlink: false,
 			HideHidden:           true,
 			RenderReadmeMd:       false,
+			Exclude:              []string{".git/", "*.tmp"},
 		},
 		Features: FeaturesConfig{
 			CORSEnabled: false,

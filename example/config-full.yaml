@@ -15,6 +15,9 @@ default:
     allow_external_symlink: false
     hide_hidden: true
     rander_readme_md: false
+    exclude:
+      - .git/
+      - '*.tmp'
   features:
     cors_enabled: false
     compression:

@@ -7,6 +7,9 @@ default:
     path: "./public"
     allow_symlink: true
     hide_hidden: true
+    exclude:
+      - .git/
+      - '*.tmp'
   features:
     compression: ["gzip", "brotli"]
     stats_file: "data/stats-simple.json"
