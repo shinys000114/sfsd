@@ -71,7 +71,7 @@ func main() {
 		dirPath := os.Args[2]
 		statsPath := os.Args[3]
 
-		middleware.InitCounter(statsPath)
+		counter := middleware.NewCounter(statsPath)
 
 		absDir, err := filepath.Abs(dirPath)
 		if err != nil {
@@ -82,7 +82,7 @@ func main() {
 		fmt.Printf("Cleaning up stats file '%s' against directory '%s'...\n", statsPath, absDir)
 
 		var removed int
-		middleware.ExportDownloadStats(func(key string, value uint64) {
+		counter.ExportDownloadStats(func(key string, value uint64) {
 			cleanPath := filepath.Clean(key)
 			if cleanPath == "/" {
 				cleanPath = ""
@@ -90,13 +90,13 @@ func main() {
 			fullPath := filepath.Join(absDir, cleanPath)
 
 			if _, err := os.Stat(fullPath); os.IsNotExist(err) {
-				middleware.DeleteStat(key)
+				counter.DeleteStat(key)
 				fmt.Printf("Removed non-existent file from stats: %s\n", key)
 				removed++
 			}
 		})
 
-		middleware.SaveStats()
+		counter.SaveStats()
 		fmt.Printf("Cleanup complete. Removed %d entries.\n", removed)
 		os.Exit(0)
 
@@ -126,10 +126,6 @@ func startServer(cfg *config.Config) {
 			groups[addr] = make(map[string]*config.ServerInstance)
 		}
 		groups[addr][name] = &instance
-
-		if instance.Features.StatsFile != "" {
-			middleware.InitCounter(instance.Features.StatsFile)
-		}
 	}
 
 	fmt.Printf("Launching servers across %d unique addresses...\n", len(groups))
@@ -150,6 +146,6 @@ func startServer(cfg *config.Config) {
 	<-quit
 
 	fmt.Println("\nShutting down all servers...")
-	middleware.SaveStats()
+	middleware.SaveAllCounters()
 	os.Exit(0)
 }

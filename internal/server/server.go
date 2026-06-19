@@ -53,7 +53,10 @@ func StartGroup(addr string, instances map[string]*config.ServerInstance) error 
 		mux.Handle("/", fileHandler)
 
 		var h http.Handler = mux
-		h = middleware.DownloadCounter(h)
+		if counter := middleware.NewCounter(cfg.Features.StatsFile); counter != nil {
+			counter.StartAutoSave()
+			h = counter.DownloadCounter(h)
+		}
 		h = middleware.Cache(cfg.Features.CacheRules, h)
 		h = middleware.Compress(cfg.Features.Compression, h)
 		h = middleware.CORS(cfg.Features.CORSEnabled, h)
