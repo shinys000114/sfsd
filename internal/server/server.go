@@ -42,8 +42,16 @@ func StartGroup(addr string, instances map[string]*config.ServerInstance) error 
 	var firstCert *tls.Certificate
 	var http3Enabled bool
 	var tlsEnabled bool
+	var tlsModeSet bool
 
 	for name, cfg := range instances {
+		if !tlsModeSet {
+			tlsEnabled = cfg.Server.TLS.Enabled
+			tlsModeSet = true
+		} else if tlsEnabled != cfg.Server.TLS.Enabled {
+			return fmt.Errorf("[%s] cannot mix TLS and non-TLS instances on %s", name, addr)
+		}
+
 		fileHandler := handler.NewFileHandler(cfg)
 		mux := http.NewServeMux()
 		mux.Handle("/", fileHandler)
@@ -82,7 +90,6 @@ func StartGroup(addr string, instances map[string]*config.ServerInstance) error 
 
 		// Prepare TLS if enabled
 		if cfg.Server.TLS.Enabled {
-			tlsEnabled = true
 			cert, err := tls.LoadX509KeyPair(cfg.Server.TLS.CertFile, cfg.Server.TLS.KeyFile)
 			if err != nil {
 				return fmt.Errorf("[%s] Failed to load TLS cert: %v", name, err)
