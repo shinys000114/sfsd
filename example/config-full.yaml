@@ -14,7 +14,7 @@ default:
     allow_symlink: true
     allow_external_symlink: false
     hide_hidden: true
-    rander_readme_md: false
+    render_readme_md: false
     exclude:
       - .git/
       - '*.tmp'
