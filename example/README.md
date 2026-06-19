@@ -19,6 +19,7 @@ This directory contains various configuration examples for `sfsd`. You can use t
 | [`config-tls-h3.yaml`](./config-tls-h3.yaml) | Secure Server (HTTPS/HTTP3) | TLS enabled, HTTP/3 (QUIC) support, Custom error pages. |
 | [`config-vhost.yaml`](./config-vhost.yaml) | Virtual Hosting (vHost) | Serve different directories based on the requested domain on the same port (80). |
 | [`config-multi-instance.yaml`](./config-multi-instance.yaml) | Multi-Instance Setup | Multiple server instances running on different ports (e.g., 8080 and 9090). |
+| [`config-debian-repo.yaml`](./config-debian-repo.yaml) | Debian APT Repository | Serve an existing signed APT repository tree with cache rules for metadata and packages. |
 
 ---
 
