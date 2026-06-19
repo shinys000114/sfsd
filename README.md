@@ -105,6 +105,8 @@ web-server:
     cache_rules:
       - pattern: '*.png'
         max_age: 86400
+      - pattern: 'assets/**'
+        max_age: 31536000
 
 # Instance 2: Secure Storage (HTTPS/HTTP3)
 secure-storage:
@@ -126,6 +128,8 @@ secure-storage:
 ```
 
 `directory.exclude` uses gitignore-like patterns. Blank lines and `#` comments are ignored, `!` negates a previous match, `/` anchors a pattern to the serve root, and a trailing `/` matches a directory and its contents.
+
+`features.cache_rules[].pattern` uses glob patterns. Patterns without `/`, such as `*.png`, match any path component. Patterns with `/`, such as `assets/**`, match the request path relative to the served directory.
 
 For more detailed scenarios (Reverse Proxy, vHost, etc.), check the [**Example Directory**](./example/README.md).
 

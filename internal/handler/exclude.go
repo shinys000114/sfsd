@@ -4,6 +4,7 @@ import (
 	"path"
 	"path/filepath"
 	"regexp"
+	"sfsd/internal/pattern"
 	"strings"
 )
 
@@ -19,30 +20,30 @@ func compileExcludeRules(patterns []string) []excludeRule {
 	rules := make([]excludeRule, 0, len(patterns))
 
 	for _, raw := range patterns {
-		pattern := strings.TrimSpace(raw)
-		if pattern == "" || strings.HasPrefix(pattern, "#") {
+		excludePattern := strings.TrimSpace(raw)
+		if excludePattern == "" || strings.HasPrefix(excludePattern, "#") {
 			continue
 		}
 
-		negated := strings.HasPrefix(pattern, "!")
+		negated := strings.HasPrefix(excludePattern, "!")
 		if negated {
-			pattern = strings.TrimSpace(strings.TrimPrefix(pattern, "!"))
+			excludePattern = strings.TrimSpace(strings.TrimPrefix(excludePattern, "!"))
 		}
-		if pattern == "" {
+		if excludePattern == "" {
 			continue
 		}
 
-		dirOnly := strings.HasSuffix(pattern, "/")
-		pattern = filepath.ToSlash(strings.TrimSuffix(pattern, "/"))
-		anchored := strings.HasPrefix(pattern, "/")
-		pattern = strings.TrimPrefix(pattern, "/")
-		pattern = strings.TrimPrefix(pattern, "./")
-		pattern = path.Clean(pattern)
-		if pattern == "." {
+		dirOnly := strings.HasSuffix(excludePattern, "/")
+		excludePattern = filepath.ToSlash(strings.TrimSuffix(excludePattern, "/"))
+		anchored := strings.HasPrefix(excludePattern, "/")
+		excludePattern = strings.TrimPrefix(excludePattern, "/")
+		excludePattern = strings.TrimPrefix(excludePattern, "./")
+		excludePattern = path.Clean(excludePattern)
+		if excludePattern == "." {
 			continue
 		}
 
-		regex, err := regexp.Compile("^" + globToRegexp(pattern) + "$")
+		regex, err := regexp.Compile("^" + pattern.GlobToRegexp(excludePattern) + "$")
 		if err != nil {
 			continue
 		}
@@ -51,7 +52,7 @@ func compileExcludeRules(patterns []string) []excludeRule {
 			negated:  negated,
 			dirOnly:  dirOnly,
 			anchored: anchored,
-			hasSlash: strings.Contains(pattern, "/"),
+			hasSlash: strings.Contains(excludePattern, "/"),
 			regex:    regex,
 		})
 	}
@@ -114,40 +115,4 @@ func (r excludeRule) matchesDirectory(rel string) bool {
 		}
 		current = current[:idx]
 	}
-}
-
-func globToRegexp(pattern string) string {
-	var out strings.Builder
-	for i := 0; i < len(pattern); {
-		switch pattern[i] {
-		case '*':
-			if i+1 < len(pattern) && pattern[i+1] == '*' {
-				i += 2
-				if i < len(pattern) && pattern[i] == '/' {
-					out.WriteString("(?:.*/)?")
-					i++
-				} else {
-					out.WriteString(".*")
-				}
-			} else {
-				out.WriteString("[^/]*")
-				i++
-			}
-		case '?':
-			out.WriteString("[^/]")
-			i++
-		case '\\':
-			if i+1 < len(pattern) {
-				out.WriteString(regexp.QuoteMeta(pattern[i+1 : i+2]))
-				i += 2
-			} else {
-				out.WriteString("\\\\")
-				i++
-			}
-		default:
-			out.WriteString(regexp.QuoteMeta(pattern[i : i+1]))
-			i++
-		}
-	}
-	return out.String()
 }
