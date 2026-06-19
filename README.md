@@ -94,7 +94,9 @@ web-server:
   directory:
     path: ./public
     allow_symlink: true
+    allow_external_symlink: false
     hide_hidden: true
+    render_readme_md: true
     exclude:
       - .git/
       - '*.tmp'
@@ -129,7 +131,15 @@ secure-storage:
 
 `directory.exclude` uses gitignore-like patterns. Blank lines and `#` comments are ignored, `!` negates a previous match, `/` anchors a pattern to the serve root, and a trailing `/` matches a directory and its contents.
 
+`directory.render_readme_md` renders a `README.md` file at the top of directory listings. Excluded or hidden README files are not rendered.
+
+`directory.hide_hidden` checks every path component, so files inside hidden directories such as `.git/config` are hidden too.
+
+`directory.allow_external_symlink` controls whether symlink targets outside the served directory are accessible. If disabled, external symlinks are rejected.
+
 `features.cache_rules[].pattern` uses glob patterns. Patterns without `/`, such as `*.png`, match any path component. Patterns with `/`, such as `assets/**`, match the request path relative to the served directory.
+
+Each server instance should normally use its own `features.stats_file`. Instances that share the same `stats_file` also share one download counter.
 
 For more detailed scenarios (Reverse Proxy, vHost, etc.), check the [**Example Directory**](./example/README.md).
 

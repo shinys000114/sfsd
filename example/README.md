@@ -49,10 +49,17 @@ To use virtual hosting effectively behind a reverse proxy, you **must** ensure t
 - **Nginx**: `proxy_set_header Host $host;`
 - **Caddy**: (Automatic by default)
 
+Domains are matched case-insensitively after stripping any port from the `Host` header. Duplicate domains or multiple unnamed default instances on the same listen address are rejected at startup.
+
 ### HTTP/3 (QUIC)
 When running `sfsd` with HTTP/3 directly:
 - Ensure the UDP port (same as TCP port) is open in your firewall.
 - Browsers require the `Alt-Svc` header (automatically added by `sfsd` or proxy examples) to discover the HTTP/3 endpoint.
+
+All instances sharing the same host/port must use the same TLS mode. Do not mix HTTP and HTTPS instances on one listen address.
+
+### Download Statistics
+Use a separate `features.stats_file` per server instance when you want independent counters. If multiple instances use the same stats file, their counters are intentionally shared.
 
 ---
 
