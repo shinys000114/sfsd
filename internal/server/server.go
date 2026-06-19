@@ -100,7 +100,7 @@ func StartGroup(addr string, instances map[string]*config.ServerInstance) error 
 			}
 
 			for _, domain := range cfg.Server.Domains {
-				certs[domain] = cert
+				certs[normalizeHost(domain)] = cert
 			}
 
 			if cfg.Server.TLS.HTTP3 {
@@ -133,7 +133,7 @@ func StartGroup(addr string, instances map[string]*config.ServerInstance) error 
 		tlsConfig := &tls.Config{
 			Certificates: []tls.Certificate{*firstCert},
 			GetCertificate: func(info *tls.ClientHelloInfo) (*tls.Certificate, error) {
-				if cert, ok := certs[info.ServerName]; ok {
+				if cert, ok := certs[normalizeHost(info.ServerName)]; ok {
 					return &cert, nil
 				}
 				return firstCert, nil
@@ -154,8 +154,9 @@ func StartGroup(addr string, instances map[string]*config.ServerInstance) error 
 			}
 
 			h3Server := &http3.Server{
-				Addr:    addr,
-				Handler: finalHandler,
+				Addr:      addr,
+				Handler:   finalHandler,
+				TLSConfig: tlsConfig,
 			}
 
 			// Add Alt-Svc header
@@ -169,7 +170,7 @@ func StartGroup(addr string, instances map[string]*config.ServerInstance) error 
 
 			go func() {
 				log.Printf("Starting HTTP/3 (QUIC) server on %s", addr)
-				if err := h3Server.ListenAndServeTLS(instances[getFirstKey(instances)].Server.TLS.CertFile, instances[getFirstKey(instances)].Server.TLS.KeyFile); err != nil {
+				if err := h3Server.ListenAndServe(); err != nil {
 					log.Printf("HTTP/3 server error: %v", err)
 				}
 			}()
@@ -181,13 +182,6 @@ func StartGroup(addr string, instances map[string]*config.ServerInstance) error 
 
 	log.Printf("Starting HTTP server on %s (Shared port for %d instances)", addr, len(instances))
 	return http.ListenAndServe(addr, finalHandler)
-}
-
-func getFirstKey(m map[string]*config.ServerInstance) string {
-	for k := range m {
-		return k
-	}
-	return ""
 }
 
 func normalizeHost(host string) string {
