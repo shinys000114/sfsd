@@ -84,25 +84,33 @@ func serveDirectory(w http.ResponseWriter, r *http.Request, fullPath string, req
 		}
 
 		// Skip hidden files
-		if cfg.Directory.HideHidden && isHidden(entryPath) {
+		if cfg.Directory.HideHidden && isHiddenPath(baseDir, entryPath) {
 			continue
 		}
 
 		if isExcludedByRules(baseDir, entryPath, info.IsDir(), excludeRules) {
 			continue
 		}
-		if info.Mode()&os.ModeSymlink != 0 {
+		if entry.Type()&os.ModeSymlink != 0 {
+			if !cfg.Directory.AllowSymlink {
+				continue
+			}
 			resolvedPath, err := filepath.EvalSymlinks(entryPath)
-			if err == nil {
-				resolvedInfo, err := os.Stat(resolvedPath)
-				if err == nil {
-					if cfg.Directory.HideHidden && isHidden(resolvedPath) {
-						continue
-					}
-					if isExcludedByRules(baseDir, resolvedPath, resolvedInfo.IsDir(), excludeRules) {
-						continue
-					}
-				}
+			if err != nil {
+				continue
+			}
+			if !cfg.Directory.AllowExternalSymlink && !isPathWithin(baseDir, resolvedPath) {
+				continue
+			}
+			resolvedInfo, err := os.Stat(resolvedPath)
+			if err != nil {
+				continue
+			}
+			if cfg.Directory.HideHidden && isHiddenPath(baseDir, resolvedPath) {
+				continue
+			}
+			if isExcludedByRules(baseDir, resolvedPath, resolvedInfo.IsDir(), excludeRules) {
+				continue
 			}
 		}
 

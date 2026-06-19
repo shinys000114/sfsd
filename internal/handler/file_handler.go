@@ -103,48 +103,10 @@ func (h *FileHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Resolve Symlink if needed
-	resolvedPath := absFullPath
-	fileInfo, err := os.Lstat(resolvedPath)
-	if err != nil {
-		if os.IsNotExist(err) {
-			h.serveCustomError(w, r, http.StatusNotFound)
-			return
-		}
-		h.serveCustomError(w, r, http.StatusInternalServerError)
+	resolvedPath, fileInfo, statusCode := h.resolvePath(cleanPath)
+	if statusCode != 0 {
+		h.serveCustomError(w, r, statusCode)
 		return
-	}
-
-	if fileInfo.Mode()&os.ModeSymlink != 0 {
-		if !h.cfg.Directory.AllowSymlink {
-			h.serveCustomError(w, r, http.StatusForbidden)
-			return
-		}
-
-		evalPath, err := filepath.EvalSymlinks(resolvedPath)
-		if err != nil {
-			h.serveCustomError(w, r, http.StatusInternalServerError)
-			return
-		}
-
-		absEvalPath, err := filepath.Abs(evalPath)
-		if err != nil {
-			h.serveCustomError(w, r, http.StatusForbidden)
-			return
-		}
-
-		if !h.cfg.Directory.AllowExternalSymlink && !isPathWithin(h.baseDir, absEvalPath) {
-			h.serveCustomError(w, r, http.StatusForbidden)
-			return
-		}
-
-		// Update resolved path for serving
-		resolvedPath = absEvalPath
-		fileInfo, err = os.Stat(resolvedPath) // get actual file info
-		if err != nil {
-			h.serveCustomError(w, r, http.StatusInternalServerError)
-			return
-		}
 	}
 
 	if isExcludedByRules(h.baseDir, absFullPath, fileInfo.IsDir(), h.excludeRules) ||
@@ -155,7 +117,7 @@ func (h *FileHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	// Check if hidden files are allowed
 	if h.cfg.Directory.HideHidden {
-		if isHidden(absFullPath) || (resolvedPath != absFullPath && isHidden(resolvedPath)) {
+		if isHiddenPath(h.baseDir, absFullPath) || (resolvedPath != absFullPath && isHiddenPath(h.baseDir, resolvedPath)) {
 			// Pretend it doesn't exist
 			h.serveCustomError(w, r, http.StatusNotFound)
 			return
@@ -183,10 +145,89 @@ func (h *FileHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	http.ServeFile(w, r, resolvedPath)
 }
 
+func (h *FileHandler) resolvePath(cleanPath string) (string, os.FileInfo, int) {
+	resolvedPath := h.baseDir
+	if cleanPath != "" {
+		for _, component := range strings.Split(filepath.ToSlash(cleanPath), "/") {
+			if component == "" || component == "." {
+				continue
+			}
+			resolvedPath = filepath.Join(resolvedPath, component)
+			if !isPathWithin(h.baseDir, resolvedPath) {
+				return "", nil, http.StatusForbidden
+			}
+
+			fileInfo, err := os.Lstat(resolvedPath)
+			if err != nil {
+				if os.IsNotExist(err) {
+					return "", nil, http.StatusNotFound
+				}
+				return "", nil, http.StatusInternalServerError
+			}
+
+			if fileInfo.Mode()&os.ModeSymlink == 0 {
+				continue
+			}
+
+			if !h.cfg.Directory.AllowSymlink {
+				return "", nil, http.StatusForbidden
+			}
+
+			evalPath, err := filepath.EvalSymlinks(resolvedPath)
+			if err != nil {
+				return "", nil, http.StatusInternalServerError
+			}
+
+			absEvalPath, err := filepath.Abs(evalPath)
+			if err != nil {
+				return "", nil, http.StatusForbidden
+			}
+
+			if !h.cfg.Directory.AllowExternalSymlink && !isPathWithin(h.baseDir, absEvalPath) {
+				return "", nil, http.StatusForbidden
+			}
+
+			resolvedPath = absEvalPath
+		}
+	}
+
+	fileInfo, err := os.Stat(resolvedPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return "", nil, http.StatusNotFound
+		}
+		return "", nil, http.StatusInternalServerError
+	}
+
+	return resolvedPath, fileInfo, 0
+}
+
 func isPathWithin(baseDir string, targetPath string) bool {
 	rel, err := filepath.Rel(baseDir, targetPath)
 	if err != nil {
 		return false
 	}
 	return rel == "." || (rel != ".." && !strings.HasPrefix(rel, ".."+string(os.PathSeparator)) && !filepath.IsAbs(rel))
+}
+
+func isHiddenPath(baseDir string, targetPath string) bool {
+	if isPathWithin(baseDir, targetPath) {
+		rel, err := filepath.Rel(baseDir, targetPath)
+		if err != nil {
+			return false
+		}
+		currentPath := baseDir
+		for _, component := range strings.Split(filepath.ToSlash(filepath.Clean(rel)), "/") {
+			if component == "." || component == "" {
+				continue
+			}
+			currentPath = filepath.Join(currentPath, component)
+			if isHidden(currentPath) || strings.HasPrefix(component, ".") {
+				return true
+			}
+		}
+		return false
+	}
+
+	return isHidden(targetPath)
 }
