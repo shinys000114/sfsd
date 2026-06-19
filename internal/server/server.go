@@ -20,12 +20,7 @@ type VHostHandler struct {
 }
 
 func (vh *VHostHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	host := r.Host
-	// Remove port from host if present
-	if h, _, err := net.SplitHostPort(host); err == nil {
-		host = h
-	}
-
+	host := normalizeHost(r.Host)
 	if h, ok := vh.hosts[host]; ok {
 		h.ServeHTTP(w, r)
 		return
@@ -66,7 +61,7 @@ func StartGroup(addr string, instances map[string]*config.ServerInstance) error 
 		// Register all domains for this instance
 		if len(cfg.Server.Domains) > 0 {
 			for _, domain := range cfg.Server.Domains {
-				vhost.hosts[domain] = h
+				vhost.hosts[normalizeHost(domain)] = h
 			}
 		} else {
 			// If no domains, we can't reliably route multiple instances on same port
@@ -107,10 +102,7 @@ func StartGroup(addr string, instances map[string]*config.ServerInstance) error 
 		defaultHandler := vhost.hosts["_default_"]
 		originalVHost := vhost.ServeHTTP
 		finalHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			host := r.Host
-			if h, _, err := net.SplitHostPort(host); err == nil {
-				host = h
-			}
+			host := normalizeHost(r.Host)
 			if _, ok := vhost.hosts[host]; ok {
 				originalVHost(w, r)
 			} else {
@@ -173,4 +165,20 @@ func getFirstKey(m map[string]*config.ServerInstance) string {
 		return k
 	}
 	return ""
+}
+
+func normalizeHost(host string) string {
+	host = strings.TrimSpace(host)
+	if host == "" {
+		return ""
+	}
+
+	if h, _, err := net.SplitHostPort(host); err == nil {
+		host = h
+	} else if strings.HasPrefix(host, "[") && strings.HasSuffix(host, "]") {
+		host = strings.TrimPrefix(strings.TrimSuffix(host, "]"), "[")
+	}
+
+	host = strings.TrimSuffix(host, ".")
+	return strings.ToLower(host)
 }
