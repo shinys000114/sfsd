@@ -31,7 +31,6 @@ Caddy is known for its simplicity and automatic HTTPS/HTTP3 support.
 
 - **[Standard SSL Termination](./reverse_proxy/caddy-standard.caddy)**: Front-end HTTPS (Caddy) to Back-end HTTP (sfsd).
 - **[vHost Integration](./reverse_proxy/caddy-vhost.caddy)**: Routing multiple domains to a single sfsd backend port.
-- **[End-to-End TLS](./reverse_proxy/caddy-tls-reencrypt.caddy)**: Encrypted communication between Caddy and sfsd.
 
 ### Nginx Scenarios
 Nginx offers fine-grained control over protocols, caching, and upstream management.
