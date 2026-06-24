@@ -1,0 +1,82 @@
+# Internal Ubuntu ports and PPA mirror behind Caddy.
+# Caddy accepts LAN requests on port 80 and proxies them to this loopback-only
+# listener while preserving the original Host header.
+
+ubuntu_ports:
+  server:
+    host: "127.0.0.1"
+    port: 18080
+    domains:
+      - "ports.ubuntu.com"
+      - "mirror.sys114.com/ubuntu-ports"
+  directory:
+    path: "/home/web/mirror/mirror/ports.ubuntu.com/ubuntu-ports"
+    allow_symlink: true
+    allow_external_symlink: false
+    hide_hidden: true
+    render_readme_md: false
+    exclude:
+      - .git/
+      - '*.tmp'
+  features:
+    # Repository metadata and packages are already compressed.
+    compression:
+      - none
+    cache_rules:
+      - pattern: '**/dists/**/InRelease'
+        max_age: 0
+      - pattern: '**/dists/**/Release'
+        max_age: 0
+      - pattern: '**/dists/**/Release.gpg'
+        max_age: 0
+      - pattern: '**/dists/**/Packages*'
+        max_age: 300
+      - pattern: '**/dists/**/Sources*'
+        max_age: 300
+      - pattern: '**/dists/**/by-hash/**'
+        max_age: 31536000
+      - pattern: '**/pool/**'
+        max_age: 31536000
+      - pattern: '*'
+        max_age: 3600
+  logging:
+    format: plain
+
+linuxfactory_ppa:
+  server:
+    host: "127.0.0.1"
+    port: 18080
+    domains:
+      - "ppa.linuxfactory.or.kr"
+      - "mirror.sys114.com/odroid"
+  directory:
+    path: "/home/web/mirror/mirror/ppa.linuxfactory.or.kr"
+    allow_symlink: true
+    allow_external_symlink: false
+    hide_hidden: true
+    render_readme_md: false
+    exclude:
+      - .git/
+      - '*.tmp'
+  features:
+    compression:
+      - none
+    cache_rules:
+      - pattern: '**/dists/**/InRelease'
+        max_age: 0
+      - pattern: '**/dists/**/Release'
+        max_age: 0
+      - pattern: '**/dists/**/Release.gpg'
+        max_age: 0
+      - pattern: '**/dists/**/Packages*'
+        max_age: 300
+      - pattern: '**/dists/**/Sources*'
+        max_age: 300
+      - pattern: '**/dists/**/by-hash/**'
+        max_age: 31536000
+      - pattern: '**/pool/**'
+        max_age: 31536000
+      - pattern: '*'
+        max_age: 3600
+  logging:
+    format: plain

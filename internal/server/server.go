@@ -6,6 +6,7 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"path"
 	"strconv"
 	"strings"
 
@@ -15,30 +16,55 @@ import (
 	"sfsd/internal/middleware"
 )
 
-// VHostHandler routes requests based on the Host header
+type vhostRoute struct {
+	pathPrefix string
+	handler    http.Handler
+}
+
+// VHostHandler routes requests based on the Host header and optional path prefix.
 type VHostHandler struct {
-	hosts map[string]http.Handler
+	hosts          map[string][]vhostRoute
+	defaultHandler http.Handler
 }
 
 func (vh *VHostHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	host := normalizeHost(r.Host)
-	if h, ok := vh.hosts[host]; ok {
-		h.ServeHTTP(w, r)
+	routes, hostExists := vh.hosts[host]
+	requestPath := normalizeRoutePath(r.URL.Path)
+
+	var matched *vhostRoute
+	for i := range routes {
+		route := &routes[i]
+		if routeMatchesPath(route.pathPrefix, requestPath) &&
+			(matched == nil || len(route.pathPrefix) > len(matched.pathPrefix)) {
+			matched = route
+		}
+	}
+
+	if matched != nil {
+		matched.handler.ServeHTTP(w, r)
+		return
+	}
+	if hostExists {
+		http.Error(w, "Path not found", http.StatusNotFound)
+		return
+	}
+	if vh.defaultHandler != nil {
+		vh.defaultHandler.ServeHTTP(w, r)
 		return
 	}
 
-	// Default to the first configured host if no match (optional)
-	// Or serve 404
 	http.Error(w, "Host not found", http.StatusNotFound)
 }
 
 // StartGroup initializes and starts multiple server instances on a single address
 func StartGroup(addr string, instances map[string]*config.ServerInstance) error {
 	vhost := &VHostHandler{
-		hosts: make(map[string]http.Handler),
+		hosts: make(map[string][]vhostRoute),
 	}
 
 	certs := make(map[string]tls.Certificate)
+	certSources := make(map[string]string)
 	var firstCert *tls.Certificate
 	var http3Enabled bool
 	var tlsEnabled bool
@@ -70,22 +96,27 @@ func StartGroup(addr string, instances map[string]*config.ServerInstance) error 
 		// Register all domains for this instance
 		if len(cfg.Server.Domains) > 0 {
 			for _, domain := range cfg.Server.Domains {
-				host := normalizeHost(domain)
-				if host == "" {
-					return fmt.Errorf("[%s] empty vhost domain", name)
+				host, pathPrefix, err := parseDomainRoute(domain)
+				if err != nil {
+					return fmt.Errorf("[%s] invalid vhost domain %q: %w", name, domain, err)
 				}
-				if _, exists := vhost.hosts[host]; exists {
-					return fmt.Errorf("[%s] duplicate vhost domain: %s", name, host)
+				for _, route := range vhost.hosts[host] {
+					if route.pathPrefix == pathPrefix {
+						return fmt.Errorf("[%s] duplicate vhost route: %s%s", name, host, displayRoutePath(pathPrefix))
+					}
 				}
-				vhost.hosts[host] = h
+				vhost.hosts[host] = append(vhost.hosts[host], vhostRoute{
+					pathPrefix: pathPrefix,
+					handler:    h,
+				})
 			}
 		} else {
 			// If no domains, we can't reliably route multiple instances on same port
 			// but we'll use it as a "default" for this address if it's the only one.
-			if _, exists := vhost.hosts["_default_"]; exists {
+			if vhost.defaultHandler != nil {
 				return fmt.Errorf("[%s] multiple default instances configured for %s", name, addr)
 			}
-			vhost.hosts["_default_"] = h
+			vhost.defaultHandler = h
 		}
 
 		// Prepare TLS if enabled
@@ -99,8 +130,17 @@ func StartGroup(addr string, instances map[string]*config.ServerInstance) error 
 				firstCert = &cert
 			}
 
+			certSource := cfg.Server.TLS.CertFile + "\x00" + cfg.Server.TLS.KeyFile
 			for _, domain := range cfg.Server.Domains {
-				certs[normalizeHost(domain)] = cert
+				host, _, err := parseDomainRoute(domain)
+				if err != nil {
+					return fmt.Errorf("[%s] invalid vhost domain %q: %w", name, domain, err)
+				}
+				if source, exists := certSources[host]; exists && source != certSource {
+					return fmt.Errorf("[%s] multiple TLS certificates configured for vhost domain: %s", name, host)
+				}
+				certSources[host] = certSource
+				certs[host] = cert
 			}
 
 			if cfg.Server.TLS.HTTP3 {
@@ -109,24 +149,16 @@ func StartGroup(addr string, instances map[string]*config.ServerInstance) error 
 		}
 	}
 
-	// Final handler: if only one instance with no specific domains, use it directly
+	// Keep the direct handler optimization for a single host-wide or default instance.
 	var finalHandler http.Handler = vhost
-	if len(vhost.hosts) == 1 {
-		for _, h := range vhost.hosts {
-			finalHandler = h
-		}
-	} else if _, ok := vhost.hosts["_default_"]; ok && len(vhost.hosts) > 1 {
-		// If we have mixed named and unnamed hosts, we might need a better fallback
-		defaultHandler := vhost.hosts["_default_"]
-		originalVHost := vhost.ServeHTTP
-		finalHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			host := normalizeHost(r.Host)
-			if _, ok := vhost.hosts[host]; ok {
-				originalVHost(w, r)
-			} else {
-				defaultHandler.ServeHTTP(w, r)
+	if len(vhost.hosts) == 0 && vhost.defaultHandler != nil {
+		finalHandler = vhost.defaultHandler
+	} else if len(vhost.hosts) == 1 && vhost.defaultHandler == nil {
+		for _, routes := range vhost.hosts {
+			if len(routes) == 1 && routes[0].pathPrefix == "/" {
+				finalHandler = routes[0].handler
 			}
-		})
+		}
 	}
 
 	if tlsEnabled {
@@ -198,6 +230,48 @@ func normalizeHost(host string) string {
 
 	host = strings.TrimSuffix(host, ".")
 	return strings.ToLower(host)
+}
+
+func parseDomainRoute(domain string) (string, string, error) {
+	domain = strings.TrimSpace(domain)
+	if domain == "" {
+		return "", "", fmt.Errorf("empty domain")
+	}
+
+	hostPart := domain
+	pathPrefix := "/"
+	if slash := strings.IndexByte(domain, '/'); slash >= 0 {
+		hostPart = domain[:slash]
+		pathPrefix = normalizeRoutePath(domain[slash:])
+	}
+
+	host := normalizeHost(hostPart)
+	if host == "" {
+		return "", "", fmt.Errorf("empty host")
+	}
+	if strings.ContainsAny(pathPrefix, "?#") {
+		return "", "", fmt.Errorf("path must not contain a query or fragment")
+	}
+
+	return host, pathPrefix, nil
+}
+
+func normalizeRoutePath(routePath string) string {
+	return path.Clean("/" + strings.TrimPrefix(routePath, "/"))
+}
+
+func routeMatchesPath(pathPrefix, requestPath string) bool {
+	if pathPrefix == "/" {
+		return true
+	}
+	return requestPath == pathPrefix || strings.HasPrefix(requestPath, pathPrefix+"/")
+}
+
+func displayRoutePath(pathPrefix string) string {
+	if pathPrefix == "/" {
+		return ""
+	}
+	return pathPrefix
 }
 
 func portFromAddr(addr string) (int, error) {

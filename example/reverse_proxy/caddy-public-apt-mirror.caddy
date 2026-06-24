@@ -1,0 +1,6 @@
+# Public HTTPS access to selected repositories served by sfsd.
+
+https://mirror.sys114.com {
+    # sfsd routes this host by the /ubuntu-ports and /odroid path prefixes.
+    reverse_proxy 127.0.0.1:18080
+}

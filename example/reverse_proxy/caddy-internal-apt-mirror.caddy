@@ -1,0 +1,14 @@
+# Internal APT mirrors served over HTTP only.
+# Internal DNS must resolve both hostnames to this Caddy server.
+
+http://ports.ubuntu.com, http://ppa.linuxfactory.or.kr {
+    @internal remote_ip 192.168.0.0/24
+
+    handle @internal {
+        reverse_proxy 127.0.0.1:18080
+    }
+
+    handle {
+        respond "Forbidden" 403
+    }
+}
