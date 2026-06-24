@@ -40,15 +40,17 @@ var mdParser = goldmark.New(
 type FileInfo struct {
 	Name    string
 	URL     string
+	Icon    string
 	IsDir   bool
 	Size    string
 	ModTime string
 }
 
 type DirData struct {
-	Path   string
-	Files  []FileInfo
-	MdHtml template.HTML
+	Path          string
+	DirectoryIcon string
+	Files         []FileInfo
+	MdHtml        template.HTML
 }
 
 func formatSize(bytes int64) string {
@@ -74,6 +76,7 @@ func serveDirectory(w http.ResponseWriter, r *http.Request, fullPath string, req
 
 	var files []FileInfo
 	var readmeContent []byte
+	icons := newIconResolver(cfg.Directory.Icons)
 
 	for _, entry := range entries {
 		name := entry.Name()
@@ -136,6 +139,7 @@ func serveDirectory(w http.ResponseWriter, r *http.Request, fullPath string, req
 		files = append(files, FileInfo{
 			Name:    name,
 			URL:     urlName,
+			Icon:    icons.iconFor(name, isDir),
 			IsDir:   isDir,
 			Size:    sizeStr,
 			ModTime: info.ModTime().Format("2006-01-02 15:04:05"),
@@ -159,9 +163,10 @@ func serveDirectory(w http.ResponseWriter, r *http.Request, fullPath string, req
 	}
 
 	data := DirData{
-		Path:   reqPath,
-		Files:  files,
-		MdHtml: mdHtml,
+		Path:          reqPath,
+		DirectoryIcon: icons.directoryIcon,
+		Files:         files,
+		MdHtml:        mdHtml,
 	}
 
 	tmpl, err := template.New("dir").Parse(defaultDirTemplate)

@@ -1,0 +1,32 @@
+# Directory listing icon configuration.
+# Extension rules take precedence over MIME type rules.
+# Extension matching is case-insensitive, and the longest suffix wins.
+# MIME types are inferred from file extensions; type/* wildcards are supported.
+# Omit the icons section to keep the default folder and file icons.
+
+custom_icons:
+  server:
+    host: "0.0.0.0"
+    port: 8080
+  directory:
+    path: "./public"
+    allow_symlink: true
+    allow_external_symlink: false
+    hide_hidden: true
+    render_readme_md: false
+    icons:
+      directory: "📁"
+      default: "📄"
+      extensions:
+        ".deb": "📦"
+        ".iso": "💿"
+        ".tar.gz": "🗜️"
+        ".md": "📝"
+      mime_types:
+        "application/pdf": "📕"
+        "image/*": "🖼️"
+  features:
+    compression:
+      - none
+  logging:
+    format: plain

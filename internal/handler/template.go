@@ -63,7 +63,7 @@ const defaultDirTemplate = `<!DOCTYPE html>
             <tbody>
                 {{if ne .Path "/"}}
                 <tr>
-                    <td class="icon">📁</td>
+                    <td class="icon">{{.DirectoryIcon}}</td>
                     <td><a href="../">..</a></td>
                     <td class="size">-</td>
                     <td class="date">-</td>
@@ -71,7 +71,7 @@ const defaultDirTemplate = `<!DOCTYPE html>
                 {{end}}
                 {{range .Files}}
                 <tr>
-                    <td class="icon">{{if .IsDir}}📁{{else}}📄{{end}}</td>
+                    <td class="icon">{{.Icon}}</td>
                     <td><a href="{{.URL}}">{{.Name}}</a></td>
                     <td class="size">{{.Size}}</td>
                     <td class="date">{{.ModTime}}</td>

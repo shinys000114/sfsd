@@ -35,12 +35,20 @@ type TLSConfig struct {
 }
 
 type DirectoryConfig struct {
-	Path                 string   `yaml:"path"`
-	AllowSymlink         bool     `yaml:"allow_symlink"`
-	AllowExternalSymlink bool     `yaml:"allow_external_symlink"`
-	HideHidden           bool     `yaml:"hide_hidden"`
-	RenderReadmeMd       bool     `yaml:"render_readme_md"`
-	Exclude              []string `yaml:"exclude,omitempty"`
+	Path                 string     `yaml:"path"`
+	AllowSymlink         bool       `yaml:"allow_symlink"`
+	AllowExternalSymlink bool       `yaml:"allow_external_symlink"`
+	HideHidden           bool       `yaml:"hide_hidden"`
+	RenderReadmeMd       bool       `yaml:"render_readme_md"`
+	Exclude              []string   `yaml:"exclude,omitempty"`
+	Icons                IconConfig `yaml:"icons,omitempty"`
+}
+
+type IconConfig struct {
+	Directory  string            `yaml:"directory,omitempty"`
+	Default    string            `yaml:"default,omitempty"`
+	Extensions map[string]string `yaml:"extensions,omitempty"`
+	MIMETypes  map[string]string `yaml:"mime_types,omitempty"`
 }
 
 type FeaturesConfig struct {
