@@ -42,7 +42,8 @@ func (vh *VHostHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if matched != nil {
-		matched.handler.ServeHTTP(w, r)
+		servePath := stripRoutePrefix(matched.pathPrefix, requestPath)
+		matched.handler.ServeHTTP(w, handler.WithServePath(r, servePath))
 		return
 	}
 	if hostExists {
@@ -265,6 +266,17 @@ func routeMatchesPath(pathPrefix, requestPath string) bool {
 		return true
 	}
 	return requestPath == pathPrefix || strings.HasPrefix(requestPath, pathPrefix+"/")
+}
+
+func stripRoutePrefix(pathPrefix, requestPath string) string {
+	if pathPrefix == "/" {
+		return requestPath
+	}
+	stripped := strings.TrimPrefix(requestPath, pathPrefix)
+	if stripped == "" {
+		return "/"
+	}
+	return stripped
 }
 
 func displayRoutePath(pathPrefix string) string {

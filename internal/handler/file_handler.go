@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"net/http"
@@ -15,6 +16,21 @@ type FileHandler struct {
 	baseDir      string
 	cfg          *config.ServerInstance
 	excludeRules []excludeRule
+}
+
+type servePathContextKey struct{}
+
+// WithServePath returns a request that uses servePath for filesystem lookup.
+func WithServePath(r *http.Request, servePath string) *http.Request {
+	ctx := context.WithValue(r.Context(), servePathContextKey{}, servePath)
+	return r.WithContext(ctx)
+}
+
+func servePath(r *http.Request) string {
+	if value, ok := r.Context().Value(servePathContextKey{}).(string); ok {
+		return value
+	}
+	return r.URL.Path
 }
 
 func NewFileHandler(instanceCfg *config.ServerInstance) *FileHandler {
@@ -86,7 +102,7 @@ func (h *FileHandler) serveCustomError(w http.ResponseWriter, r *http.Request, s
 
 func (h *FileHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// Clean the requested path to prevent initial path traversal attacks
-	cleanPath := filepath.Clean(r.URL.Path)
+	cleanPath := filepath.Clean(servePath(r))
 	if cleanPath == "/" {
 		cleanPath = ""
 	}
