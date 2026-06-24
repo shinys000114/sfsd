@@ -22,9 +22,13 @@ func NewFileHandler(instanceCfg *config.ServerInstance) *FileHandler {
 	if err != nil {
 		log.Fatalf("Failed to resolve absolute path for serving directory: %v", err)
 	}
+	baseDir, err := filepath.EvalSymlinks(absDataDir)
+	if err != nil {
+		log.Fatalf("Failed to resolve serving directory symlinks: %v", err)
+	}
 
 	return &FileHandler{
-		baseDir:      absDataDir,
+		baseDir:      baseDir,
 		cfg:          instanceCfg,
 		excludeRules: compileExcludeRules(instanceCfg.Directory.Exclude),
 	}
