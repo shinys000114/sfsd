@@ -82,15 +82,13 @@ func serveDirectory(w http.ResponseWriter, r *http.Request, fullPath string, req
 		if err != nil {
 			continue
 		}
+		isDir := info.IsDir()
 
 		// Skip hidden files
 		if cfg.Directory.HideHidden && isHiddenPath(baseDir, entryPath) {
 			continue
 		}
 
-		if isExcludedByRules(baseDir, entryPath, info.IsDir(), excludeRules) {
-			continue
-		}
 		if entry.Type()&os.ModeSymlink != 0 {
 			if !cfg.Directory.AllowSymlink {
 				continue
@@ -106,6 +104,8 @@ func serveDirectory(w http.ResponseWriter, r *http.Request, fullPath string, req
 			if err != nil {
 				continue
 			}
+			info = resolvedInfo
+			isDir = resolvedInfo.IsDir()
 			if cfg.Directory.HideHidden && isHiddenPath(baseDir, resolvedPath) {
 				continue
 			}
@@ -113,27 +113,30 @@ func serveDirectory(w http.ResponseWriter, r *http.Request, fullPath string, req
 				continue
 			}
 		}
+		if isExcludedByRules(baseDir, entryPath, isDir, excludeRules) {
+			continue
+		}
 
-		if cfg.Directory.RenderReadmeMd && !entry.IsDir() && readmeContent == nil {
+		if cfg.Directory.RenderReadmeMd && !isDir && readmeContent == nil {
 			if strings.EqualFold(name, "readme.md") {
 				readmeContent, _ = os.ReadFile(entryPath)
 			}
 		}
 
 		sizeStr := "-"
-		if !entry.IsDir() {
+		if !isDir {
 			sizeStr = formatSize(info.Size())
 		}
 
 		urlName := name
-		if entry.IsDir() {
+		if isDir {
 			urlName += "/"
 		}
 
 		files = append(files, FileInfo{
 			Name:    name,
 			URL:     urlName,
-			IsDir:   entry.IsDir(),
+			IsDir:   isDir,
 			Size:    sizeStr,
 			ModTime: info.ModTime().Format("2006-01-02 15:04:05"),
 		})
