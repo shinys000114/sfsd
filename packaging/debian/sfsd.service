@@ -1,0 +1,19 @@
+[Unit]
+Description=sfsd - Static File Serving Server
+After=network.target
+
+[Service]
+Type=simple
+User=sfsd
+Group=sfsd
+Restart=on-failure
+RestartSec=5
+ExecStart=/usr/bin/sfsd launch /etc/sfsd/config.yaml
+
+NoNewPrivileges=true
+ProtectSystem=full
+ProtectHome=true
+ReadWritePaths=/var/lib/sfsd /var/log/sfsd
+
+[Install]
+WantedBy=multi-user.target
