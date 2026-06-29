@@ -3,36 +3,28 @@ $ErrorActionPreference = "Stop"
 
 $version = "dev"
 $tag = ""
-$commitHash = ""
+$buildDate = Get-Date -Format "yyMMddHHmmss"
 
 try {
     $isGit = git rev-parse --is-inside-work-tree 2>$null
     if ($isGit -eq "true") {
-        $commitHash = git rev-parse --short HEAD 2>$null
-
         try {
             $tag = git describe --tags --abbrev=0 2>$null
         } catch { } # Ignore error if no tags found
 
-        if ([string]::IsNullOrWhiteSpace($commitHash)) {
-            $version = "dev"
-        } elseif ([string]::IsNullOrWhiteSpace($tag)) {
-            $version = "dev-$commitHash"
+        if ([string]::IsNullOrWhiteSpace($tag)) {
             $tag = "dev"
-        } else {
-            $version = "$tag-$commitHash"
         }
     } else {
         Write-Host "Warning: Not a git repository. Version will be 'dev'."
         $tag = "dev"
-        $commitHash = "nohash"
     }
 } catch {
     Write-Host "Warning: git not found or command failed. Version will be 'dev'."
     $tag = "dev"
-    $commitHash = "nohash"
 }
 
+$version = "$tag+$buildDate"
 Write-Host "Building version: $version"
 
 $env:CGO_ENABLED = "0"
@@ -40,8 +32,8 @@ $env:CGO_ENABLED = "0"
 Write-Host "Downloading dependencies..."
 go mod tidy
 
-$winOut = "sfsd_win_amd64_${tag}_${commitHash}.exe"
-$linuxOut = "sfsd_linux_amd64_${tag}_${commitHash}"
+$winOut = "sfsd_win_amd64_${version}.exe"
+$linuxOut = "sfsd_linux_amd64_${version}"
 
 # Build for Windows
 $env:GOOS = "windows"

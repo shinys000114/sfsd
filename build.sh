@@ -1,28 +1,9 @@
 #!/bin/bash
 
 VERSION="dev"
-TAG=""
-COMMIT_HASH=""
 
-if ! git rev-parse --is-inside-work-tree > /dev/null 2>&1; then
-    echo "Warning: Not a git repository. Version will be 'dev'."
-    TAG="dev"
-    COMMIT_HASH="nohash"
-else
-    COMMIT_HASH=$(git rev-parse --short HEAD 2>/dev/null)
-    TAG=$(git describe --tags --abbrev=0 2>/dev/null)
-
-    if [ -z "$COMMIT_HASH" ]; then
-        VERSION="dev"
-        TAG="dev"
-        COMMIT_HASH="nohash"
-    elif [ -z "$TAG" ]; then
-        VERSION="dev-$COMMIT_HASH"
-        TAG="dev"
-    else
-        VERSION="$TAG-$COMMIT_HASH"
-    fi
-fi
+SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
+. "$SCRIPT_DIR/scripts/version.sh"
 
 echo "Building version: $VERSION"
 
@@ -31,8 +12,8 @@ export CGO_ENABLED=0
 echo "Downloading dependencies..."
 go mod tidy
 
-WIN_OUT="sfsd_win_amd64_${TAG}_${COMMIT_HASH}.exe"
-LINUX_OUT="sfsd_linux_amd64_${TAG}_${COMMIT_HASH}"
+WIN_OUT="sfsd_win_amd64_${VERSION}.exe"
+LINUX_OUT="sfsd_linux_amd64_${VERSION}"
 
 # Build for Windows
 echo "Building Windows (amd64)... -> $WIN_OUT"
