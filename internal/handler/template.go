@@ -61,7 +61,7 @@ const defaultDirTemplate = `<!DOCTYPE html>
                 </tr>
             </thead>
             <tbody>
-                {{if ne .Path "/"}}
+                {{if .ShowParent}}
                 <tr>
                     <td class="icon">{{.DirectoryIcon}}</td>
                     <td><a href="../">..</a></td>

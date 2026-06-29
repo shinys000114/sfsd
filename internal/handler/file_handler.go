@@ -150,7 +150,7 @@ func (h *FileHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			http.Redirect(w, r, r.URL.Path+"/", http.StatusMovedPermanently)
 			return
 		}
-		serveDirectory(w, r, resolvedPath, r.URL.Path, h.cfg, h.baseDir, h.excludeRules)
+		serveDirectory(w, r, resolvedPath, r.URL.Path, cleanPath != "", h.cfg, h.baseDir, h.excludeRules)
 		return
 	}
 

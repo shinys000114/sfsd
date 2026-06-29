@@ -49,6 +49,7 @@ type FileInfo struct {
 type DirData struct {
 	Path          string
 	DirectoryIcon string
+	ShowParent    bool
 	Files         []FileInfo
 	MdHtml        template.HTML
 }
@@ -67,7 +68,7 @@ func formatSize(bytes int64) string {
 }
 
 // serveDirectory reads custom directory listing and writes HTML
-func serveDirectory(w http.ResponseWriter, r *http.Request, fullPath string, reqPath string, cfg *config.ServerInstance, baseDir string, excludeRules []excludeRule) {
+func serveDirectory(w http.ResponseWriter, r *http.Request, fullPath string, reqPath string, showParent bool, cfg *config.ServerInstance, baseDir string, excludeRules []excludeRule) {
 	entries, err := os.ReadDir(fullPath)
 	if err != nil {
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
@@ -165,6 +166,7 @@ func serveDirectory(w http.ResponseWriter, r *http.Request, fullPath string, req
 	data := DirData{
 		Path:          reqPath,
 		DirectoryIcon: icons.directoryIcon,
+		ShowParent:    showParent,
 		Files:         files,
 		MdHtml:        mdHtml,
 	}
