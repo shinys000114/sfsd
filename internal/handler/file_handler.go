@@ -167,13 +167,14 @@ func (h *FileHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 func (h *FileHandler) resolvePath(cleanPath string) (string, os.FileInfo, int) {
 	resolvedPath := h.baseDir
+	insideExternalSymlink := false
 	if cleanPath != "" {
 		for _, component := range strings.Split(filepath.ToSlash(cleanPath), "/") {
 			if component == "" || component == "." {
 				continue
 			}
 			resolvedPath = filepath.Join(resolvedPath, component)
-			if !isPathWithin(h.baseDir, resolvedPath) {
+			if !insideExternalSymlink && !isPathWithin(h.baseDir, resolvedPath) {
 				return "", nil, http.StatusForbidden
 			}
 
@@ -208,6 +209,7 @@ func (h *FileHandler) resolvePath(cleanPath string) (string, os.FileInfo, int) {
 			}
 
 			resolvedPath = absEvalPath
+			insideExternalSymlink = !isPathWithin(h.baseDir, resolvedPath)
 		}
 	}
 
