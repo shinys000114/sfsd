@@ -5,18 +5,22 @@ import (
 	"fmt"
 	"html/template"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 
 	"sfsd/internal/config"
 
 	"github.com/yuin/goldmark"
 	highlighting "github.com/yuin/goldmark-highlighting/v2"
+	"github.com/yuin/goldmark/ast"
 	"github.com/yuin/goldmark/extension"
 	"github.com/yuin/goldmark/parser"
 	"github.com/yuin/goldmark/renderer/html"
+	"github.com/yuin/goldmark/text"
 )
 
 var mdParser = goldmark.New(
@@ -157,10 +161,7 @@ func serveDirectory(w http.ResponseWriter, r *http.Request, fullPath string, req
 
 	var mdHtml template.HTML
 	if len(readmeContent) > 0 {
-		var buf bytes.Buffer
-		if err := mdParser.Convert(readmeContent, &buf); err == nil {
-			mdHtml = template.HTML(buf.String())
-		}
+		mdHtml = renderReadmeMarkdown(readmeContent, fullPath, baseDir, cfg, excludeRules)
 	}
 
 	data := DirData{
@@ -184,4 +185,60 @@ func serveDirectory(w http.ResponseWriter, r *http.Request, fullPath string, req
 	if err := tmpl.Execute(w, data); err != nil {
 		// Log error but body is already started
 	}
+}
+
+func renderReadmeMarkdown(source []byte, readmeDir string, baseDir string, cfg *config.ServerInstance, excludeRules []excludeRule) template.HTML {
+	doc := mdParser.Parser().Parse(text.NewReader(source))
+	_ = ast.Walk(doc, func(node ast.Node, entering bool) (ast.WalkStatus, error) {
+		if !entering {
+			return ast.WalkContinue, nil
+		}
+		image, ok := node.(*ast.Image)
+		if !ok {
+			return ast.WalkContinue, nil
+		}
+		image.Destination = []byte(cacheBustedImageURL(string(image.Destination), readmeDir, baseDir, cfg, excludeRules))
+		return ast.WalkContinue, nil
+	})
+
+	var buf bytes.Buffer
+	if err := mdParser.Renderer().Render(&buf, source, doc); err != nil {
+		return ""
+	}
+
+	return template.HTML(buf.String())
+}
+
+func cacheBustedImageURL(src string, readmeDir string, baseDir string, cfg *config.ServerInstance, excludeRules []excludeRule) string {
+	if src == "" || strings.HasPrefix(src, "#") || strings.HasPrefix(src, "//") {
+		return src
+	}
+
+	parsed, err := url.Parse(src)
+	if err != nil || parsed.IsAbs() || parsed.Path == "" || strings.HasPrefix(parsed.Path, "/") {
+		return src
+	}
+
+	imagePath := filepath.Join(readmeDir, filepath.FromSlash(parsed.Path))
+	absImagePath, err := filepath.Abs(imagePath)
+	if err != nil || !isPathWithin(baseDir, absImagePath) {
+		return src
+	}
+
+	info, err := os.Stat(absImagePath)
+	if err != nil || info.IsDir() {
+		return src
+	}
+
+	if cfg.Directory.HideHidden && isHiddenPath(baseDir, absImagePath) {
+		return src
+	}
+	if isExcludedByRules(baseDir, absImagePath, false, excludeRules) {
+		return src
+	}
+
+	query := parsed.Query()
+	query.Set("v", strconv.FormatInt(info.ModTime().UnixNano(), 10))
+	parsed.RawQuery = query.Encode()
+	return parsed.String()
 }
